@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS public.symptom_logs (
   balance INTEGER CHECK (balance >= 0 AND balance <= 10),
   sleep INTEGER CHECK (sleep >= 0 AND sleep <= 10),
   mood INTEGER CHECK (mood >= 0 AND mood <= 10),
-  medication_adherence TEXT, -- 'Yes', 'No', 'Partial'
+  medication_adherence TEXT CHECK (medication_adherence IN ('Yes', 'No', 'Partial')),
   side_effects TEXT[],
   other_notes TEXT,
   logged_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
@@ -65,3 +65,7 @@ CREATE POLICY "Patients can view their links" ON public.caregiver_patient_links
 -- Performance Indexes
 CREATE INDEX IF NOT EXISTS idx_symptom_logs_user_id ON public.symptom_logs(user_id);
 CREATE INDEX IF NOT EXISTS idx_symptom_logs_user_logged ON public.symptom_logs(user_id, logged_at DESC);
+
+-- SEED DATA (Optional: You would typically run this via a seed script or SQL editor, not always in schema definition)
+-- But for reference, we expect these roles to be manually assignable or handled via triggers.
+-- For now, we keep the schema clean. Demo users will be handled in Frontend logic or manual DB insertion for MVP.
