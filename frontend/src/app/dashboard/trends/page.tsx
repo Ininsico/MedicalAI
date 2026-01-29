@@ -1,6 +1,7 @@
+
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { api } from '@/lib/api';
 import { Card } from '@/components/ui/Card';
 import { cn } from '@/lib/utils';
@@ -27,7 +28,7 @@ import {
 
 import { useSearchParams } from 'next/navigation';
 
-export default function TrendsPage() {
+function TrendsContent() {
     const searchParams = useSearchParams();
     const patientId = searchParams.get('u');
     const [range, setRange] = useState(7);
@@ -299,5 +300,17 @@ export default function TrendsPage() {
                 </div>
             )}
         </div>
+    );
+}
+
+export default function TrendsPage() {
+    return (
+        <Suspense fallback={
+            <div className="flex items-center justify-center min-h-[400px]">
+                <div className="w-12 h-12 border-4 border-teal-500 border-t-transparent rounded-full animate-spin" />
+            </div>
+        }>
+            <TrendsContent />
+        </Suspense>
     );
 }

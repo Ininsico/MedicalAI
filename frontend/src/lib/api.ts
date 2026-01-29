@@ -1,5 +1,5 @@
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5001/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 type RequestMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
 
@@ -46,9 +46,11 @@ export const api = {
         getPatientDetails: (patientId: string) => request<any>(`/caregiver/patients/${patientId}`, 'GET'),
         generateReport: (patientId: string) => request<any>(`/caregiver/patients/${patientId}/report`, 'GET'),
     },
+
     notifications: {
         getAll: () => request<any>('/notifications', 'GET'),
-        markRead: (id: string) => request<any>(`/notifications/${id}/read`, 'POST'),
+        markRead: (id: string) => request<any>(`/notifications/${id}/read`, 'PUT'),
+        markAllRead: () => request<any>('/notifications/read-all', 'PUT'),
     },
     admin: {
         getPatients: () => request<any>('/admin/patients', 'GET'),
