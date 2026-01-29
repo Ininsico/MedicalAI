@@ -1,5 +1,13 @@
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+
+
+
+let envUrl = process.env.NEXT_PUBLIC_API_URL || '';
+envUrl = envUrl.replace(/\/$/, '');
+if (envUrl && !envUrl.endsWith('/api')) {
+    envUrl += '/api';
+}
+const API_URL = envUrl;
 
 type RequestMethod = 'GET' | 'POST' | 'PUT' | 'DELETE';
 
