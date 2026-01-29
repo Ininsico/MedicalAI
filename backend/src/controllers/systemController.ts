@@ -10,12 +10,23 @@ const checkEmailService = () => {
     return process.env.EMAIL_USER ? 'connected' : 'disconnected';
 };
 
+
 /**
- * Get system health status (Admin only)
+ * @swagger
+ * /api/admin/health:
+ *   get:
+ *     summary: Get system health status and statistics (Admin only)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: System health data retrieved successfully
+ *       500:
+ *         description: Internal server error
  */
 export const getSystemHealth = async (req: Request, res: Response) => {
     try {
-        // Check database connection
         const { data: dbCheck, error: dbError } = await supabaseAdmin
             .from('users')
             .select('count')
@@ -23,7 +34,6 @@ export const getSystemHealth = async (req: Request, res: Response) => {
 
         const dbStatus = !dbError ? 'healthy' : 'unhealthy';
 
-        // Get system statistics
         const [
             { count: usersCount },
             { count: patientsCount },
@@ -64,7 +74,6 @@ export const getSystemHealth = async (req: Request, res: Response) => {
             }
         });
     } catch (error) {
-        console.error('Health check error:', error);
         res.status(500).json({
             status: 'error',
             error: 'Health check failed'
@@ -73,7 +82,35 @@ export const getSystemHealth = async (req: Request, res: Response) => {
 };
 
 /**
- * Get audit logs (Admin only)
+ * @swagger
+ * /api/admin/audit-logs:
+ *   get:
+ *     summary: Get system audit logs (Admin only)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: action
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: user_id
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Audit logs retrieved successfully
+ *       500:
+ *         description: Internal server error
  */
 export const getAuditLogs = async (req: Request, res: Response) => {
     try {
@@ -92,7 +129,6 @@ export const getAuditLogs = async (req: Request, res: Response) => {
         user:users (email, full_name)
       `, { count: 'exact' });
 
-        // Apply filters
         if (action) {
             query = query.eq('action', action);
         }
@@ -113,9 +149,7 @@ export const getAuditLogs = async (req: Request, res: Response) => {
             .order('created_at', { ascending: false })
             .range(offset, offset + limit - 1);
 
-        if (error) {
-            throw error;
-        }
+        if (error) throw error;
 
         res.json({
             logs,
@@ -127,27 +161,28 @@ export const getAuditLogs = async (req: Request, res: Response) => {
             }
         });
     } catch (error) {
-        console.error('Get audit logs error:', error);
         res.status(500).json({ error: 'Failed to fetch audit logs' });
     }
 };
 
 /**
- * Setup database tables (Admin only - one-time use)
+ * @swagger
+ * /api/admin/setup-db:
+ *   post:
+ *     summary: Initiate database setup instructions (Admin only)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Setup instructions retrieved
+ *       500:
+ *         description: Internal server error
  */
 export const setupDatabase = async (req: Request, res: Response) => {
     try {
-        // This is a placeholder for database setup
-        // In production, you would use Supabase migration files
-
-        // const setupSQL = `
-        //   -- SQL to create tables would go here
-        //   -- This is just a placeholder
-        //   SELECT 'Database setup requires manual SQL execution' as message;
-        // `;
-
         res.json({
-            message: 'Database setup initiated',
+            message: 'Database setup instructions',
             note: 'Please run the SQL migrations manually in Supabase SQL Editor',
             steps: [
                 '1. Create tables using the provided SQL schema',
@@ -157,7 +192,6 @@ export const setupDatabase = async (req: Request, res: Response) => {
             ]
         });
     } catch (error) {
-        console.error('Database setup error:', error);
         res.status(500).json({ error: 'Database setup failed' });
     }
 };

@@ -16,8 +16,14 @@ const transporter = nodemailer.createTransport({
     }
 });
 
+
 /**
- * Generate JWT token
+ * Generates a JSON Web Token (JWT) for a user.
+ * 
+ * @param userId - The unique identifier of the user.
+ * @param role - The role assigned to the user (e.g., admin, caregiver, patient).
+ * @param email - The user's email address.
+ * @returns A signed JWT string.
  */
 export const generateToken = (userId: string, role: string, email: string) => {
     return jwt.sign(
@@ -28,7 +34,12 @@ export const generateToken = (userId: string, role: string, email: string) => {
 };
 
 /**
- * Send email notification
+ * Sends an email using the configured SMTP transporter.
+ * 
+ * @param to - Recipient email address.
+ * @param subject - Email subject line.
+ * @param html - HTML content of the email.
+ * @returns A boolean indicating whether the email was sent successfully.
  */
 export const sendEmail = async (to: string, subject: string, html: string) => {
     try {
@@ -42,7 +53,7 @@ export const sendEmail = async (to: string, subject: string, html: string) => {
         await transporter.sendMail(mailOptions);
         return true;
     } catch (error) {
-        console.error('Email error:', error);
+        // Silently handle email errors to prevent breaking main flows
         return false;
     }
 };

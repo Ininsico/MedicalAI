@@ -25,10 +25,16 @@ import {
     Cell
 } from 'recharts';
 
+import { useSearchParams } from 'next/navigation';
+
 export default function TrendsPage() {
+    const searchParams = useSearchParams();
+    const patientId = searchParams.get('u');
     const [range, setRange] = useState(7);
     const [loading, setLoading] = useState(true);
     const [data, setData] = useState<any[]>([]);
+    const [role, setRole] = useState<'patient' | 'caregiver'>('patient');
+    const [patientInfo, setPatientInfo] = useState<any>(null);
 
     useEffect(() => {
         async function fetchData() {
@@ -37,17 +43,20 @@ export default function TrendsPage() {
                 const userStr = localStorage.getItem('user');
                 if (!userStr) return;
                 const user = JSON.parse(userStr);
+                setRole(user.role);
 
-                const logs = await api.patient.getLogs(user.id);
+                let logs = [];
+                if (user.role === 'caregiver' && patientId) {
+                    const res = await api.caregiver.getPatientLogs(patientId);
+                    logs = res.logs || [];
+                    setPatientInfo(res.patient);
+                } else {
+                    logs = await api.patient.getLogs(user.id);
+                }
 
                 if (logs) {
-                    // Filter and format based on range
-                    // Backend returns desc order (newest first). 
-                    // Chart usually wants chronological (oldest left, newest right).
                     const recentLogs = logs.slice(0, range).reverse();
-
                     const formatted = recentLogs.map((log: any) => {
-                        // Map mood string to number
                         let moodVal = 5;
                         const mood = log.mood?.toLowerCase();
                         switch (mood) {
@@ -76,7 +85,7 @@ export default function TrendsPage() {
             }
         }
         fetchData();
-    }, [range]);
+    }, [range, patientId]);
 
     return (
         <div className="space-y-12 pb-24">
@@ -87,7 +96,7 @@ export default function TrendsPage() {
                         <span>Longitudinal Data Stream</span>
                     </div>
                     <h1 className="text-5xl font-black text-slate-900 tracking-tighter">
-                        Symptom <span className="text-slate-400 italic font-serif font-light">Trajectory</span>
+                        {patientId && patientInfo ? patientInfo.full_name : 'Symptom'} <span className="text-slate-400 italic font-serif font-light">{patientId && patientInfo ? 'Trends' : 'Trajectory'}</span>
                     </h1>
                 </div>
 

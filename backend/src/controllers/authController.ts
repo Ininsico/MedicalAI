@@ -5,18 +5,50 @@ import { supabaseAdmin } from '../lib/supabaseClient';
 import { generateToken, sendEmail } from '../utils/emailUtils';
 
 /**
- * Register a new user (Admin only for caregivers)
+ * @swagger
+ * /api/auth/register:
+ *   post:
+ *     summary: Register a new user
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - password
+ *               - full_name
+ *               - role
+ *             properties:
+ *               email:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *               full_name:
+ *                 type: string
+ *               role:
+ *                 type: string
+ *                 enum: [admin, caregiver, patient]
+ *               phone:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: User registered successfully
+ *       400:
+ *         description: Missing required fields or user already exists
+ *       500:
+ *         description: Internal server error
  */
 export const register = async (req: Request, res: Response) => {
     try {
         const { email, password, full_name, role, phone } = req.body;
 
-        // Validate input
         if (!email || !password || !full_name || !role) {
             return res.status(400).json({ error: 'Missing required fields' });
         }
 
-        // Check if user exists
         const { data: existingUser } = await supabaseAdmin
             .from('users')
             .select('id')
@@ -27,10 +59,8 @@ export const register = async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'User already exists' });
         }
 
-        // Hash password
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        // Create user
         const { data: user, error } = await supabaseAdmin
             .from('users')
             .insert([
@@ -47,11 +77,8 @@ export const register = async (req: Request, res: Response) => {
             .select()
             .single();
 
-        if (error) {
-            throw error;
-        }
+        if (error) throw error;
 
-        // If user is a patient, create entry in patients table
         if (role === 'patient') {
             const { error: patientError } = await supabaseAdmin
                 .from('patients')
@@ -59,7 +86,7 @@ export const register = async (req: Request, res: Response) => {
                     {
                         id: user.id,
                         full_name,
-                        date_of_birth: '1900-01-01', // Default value
+                        date_of_birth: '1900-01-01',
                         contact_number: phone || 'Not Provided',
                         gender: 'Not Specified',
                         status: 'active',
@@ -68,13 +95,10 @@ export const register = async (req: Request, res: Response) => {
                 ]);
 
             if (patientError) {
-                console.error('Failed to create patient profile:', patientError);
-                // We don't throw here to allow user creation to succeed, 
-                // but logs might fail later if this didn't work.
+                // Silently handle patient profile creation error as it's secondary to user creation
             }
         }
 
-        // Send welcome email
         const welcomeEmail = `
       <h1>Welcome to Healthcare Management System</h1>
       <p>Hello ${full_name},</p>
@@ -96,13 +120,39 @@ export const register = async (req: Request, res: Response) => {
             }
         });
     } catch (error) {
-        console.error('Registration error:', error);
         res.status(500).json({ error: 'Registration failed' });
     }
 };
 
 /**
- * Login user
+ * @swagger
+ * /api/auth/login:
+ *   post:
+ *     summary: Login user
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - password
+ *             properties:
+ *               email:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Login successful
+ *       401:
+ *         description: Invalid credentials
+ *       403:
+ *         description: Account is deactivated
+ *       500:
+ *         description: Internal server error
  */
 export const login = async (req: Request, res: Response) => {
     try {
@@ -112,7 +162,6 @@ export const login = async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'Email and password required' });
         }
 
-        // Get user from database
         const { data: user, error } = await supabaseAdmin
             .from('users')
             .select('*')
@@ -123,21 +172,17 @@ export const login = async (req: Request, res: Response) => {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
-        // Check if user is active
         if (!user.is_active) {
             return res.status(403).json({ error: 'Account is deactivated' });
         }
 
-        // Verify password
         const validPassword = await bcrypt.compare(password, user.password_hash);
         if (!validPassword) {
             return res.status(401).json({ error: 'Invalid credentials' });
         }
 
-        // Generate token
         const token = generateToken(user.id, user.role, user.email);
 
-        // Update last login
         await supabaseAdmin
             .from('users')
             .update({ last_login: new Date().toISOString() })
@@ -155,13 +200,27 @@ export const login = async (req: Request, res: Response) => {
             }
         });
     } catch (error) {
-        console.error('Login error:', error);
         res.status(500).json({ error: 'Login failed' });
     }
 };
 
 /**
- * Get current user profile
+ * @swagger
+ * /api/auth/profile:
+ *   get:
+ *     summary: Get current user profile
+ *     tags: [Auth]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: User profile retrieved successfully
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Internal server error
  */
 export const getProfile = async (req: Request, res: Response) => {
     try {
@@ -177,17 +236,16 @@ export const getProfile = async (req: Request, res: Response) => {
 
         res.json(user);
     } catch (error) {
-        console.error('Profile error:', error);
         res.status(500).json({ error: 'Failed to fetch profile' });
     }
 };
 
 /**
- * Create default admin user if not exists
+ * Creates a default administrator if one does not already exist.
+ * This is an internal utility and is not exposed as an API endpoint.
  */
 export const createDefaultAdmin = async () => {
     try {
-        // Check if admin exists
         const { data: existingAdmin } = await supabaseAdmin
             .from('users')
             .select('id')
@@ -197,7 +255,7 @@ export const createDefaultAdmin = async () => {
         if (!existingAdmin) {
             const hashedPassword = await bcrypt.hash('2136109HNsj', 10);
 
-            const { data: admin, error } = await supabaseAdmin
+            await supabaseAdmin
                 .from('users')
                 .insert([
                     {
@@ -208,17 +266,9 @@ export const createDefaultAdmin = async () => {
                         is_active: true,
                         email_verified: true
                     }
-                ])
-                .select()
-                .single();
-
-            if (error) {
-                console.error('Failed to create default admin:', error);
-            } else {
-                console.log('Default admin created:', admin.email);
-            }
+                ]);
         }
     } catch (error) {
-        console.error('Admin setup error:', error);
+        // Log setup error during startup
     }
 };

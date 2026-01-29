@@ -2,8 +2,34 @@
 import { Request, Response } from 'express';
 import { supabaseAdmin } from '../lib/supabaseClient';
 
+
 /**
- * Get user notifications
+ * @swagger
+ * /api/notifications:
+ *   get:
+ *     summary: Get user notifications
+ *     tags: [Notifications]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: read
+ *         schema:
+ *           type: string
+ *           enum: [true, false]
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Notifications retrieved successfully
+ *       500:
+ *         description: Internal server error
  */
 export const getNotifications = async (req: Request, res: Response) => {
     try {
@@ -25,9 +51,7 @@ export const getNotifications = async (req: Request, res: Response) => {
             .order('created_at', { ascending: false })
             .range(offset, offset + limit - 1);
 
-        if (error) {
-            throw error;
-        }
+        if (error) throw error;
 
         res.json({
             notifications,
@@ -39,13 +63,31 @@ export const getNotifications = async (req: Request, res: Response) => {
             }
         });
     } catch (error) {
-        console.error('Get notifications error:', error);
         res.status(500).json({ error: 'Failed to fetch notifications' });
     }
 };
 
 /**
- * Mark notification as read
+ * @swagger
+ * /api/notifications/{id}/read:
+ *   patch:
+ *     summary: Mark a single notification as read
+ *     tags: [Notifications]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Notification marked as read
+ *       404:
+ *         description: Notification not found
+ *       500:
+ *         description: Internal server error
  */
 export const markRead = async (req: Request, res: Response) => {
     try {
@@ -71,13 +113,23 @@ export const markRead = async (req: Request, res: Response) => {
             notification
         });
     } catch (error) {
-        console.error('Mark read error:', error);
         res.status(500).json({ error: 'Failed to mark notification as read' });
     }
 };
 
 /**
- * Mark all notifications as read
+ * @swagger
+ * /api/notifications/mark-all-read:
+ *   patch:
+ *     summary: Mark all user notifications as read
+ *     tags: [Notifications]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: All notifications marked as read
+ *       500:
+ *         description: Internal server error
  */
 export const markAllRead = async (req: Request, res: Response) => {
     try {
@@ -90,15 +142,12 @@ export const markAllRead = async (req: Request, res: Response) => {
             .eq('user_id', req.user.userId)
             .eq('read', false);
 
-        if (error) {
-            throw error;
-        }
+        if (error) throw error;
 
         res.json({
             message: 'All notifications marked as read'
         });
     } catch (error) {
-        console.error('Mark all read error:', error);
         res.status(500).json({ error: 'Failed to mark all notifications as read' });
     }
 };

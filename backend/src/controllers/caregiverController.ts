@@ -3,14 +3,25 @@ import { Request, Response } from 'express';
 import { supabaseAdmin } from '../lib/supabaseClient';
 import moment from 'moment';
 
+
 /**
- * Get caregiver dashboard with assigned patients (Caregiver only)
+ * @swagger
+ * /api/caregiver/dashboard:
+ *   get:
+ *     summary: Get caregiver dashboard with assigned patients (Caregiver only)
+ *     tags: [Caregiver]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Dashboard data retrieved successfully
+ *       500:
+ *         description: Internal server error
  */
 export const getDashboard = async (req: Request, res: Response) => {
     try {
         const caregiverId = req.user.userId;
 
-        // Get assigned patients with their recent logs
         const { data: assignments, error } = await supabaseAdmin
             .from('caregiver_assignments')
             .select(`
@@ -18,19 +29,19 @@ export const getDashboard = async (req: Request, res: Response) => {
         assignment_notes,
         assigned_date,
         patient:patients (
-          id,
-          full_name,
-          date_of_birth,
-          gender,
-          contact_number,
-          status,
-          recent_logs:daily_logs (
             id,
-            date,
-            mood,
-            medication_taken,
-            created_at
-          )
+            full_name,
+            date_of_birth,
+            gender,
+            contact_number,
+            status,
+            recent_logs:daily_logs (
+                id,
+                date,
+                mood,
+                medication_taken,
+                created_at
+            )
         )
       `)
             .eq('caregiver_id', caregiverId)
@@ -38,11 +49,8 @@ export const getDashboard = async (req: Request, res: Response) => {
             .eq('patient.status', 'active')
             .order('assigned_date', { ascending: false });
 
-        if (error) {
-            throw error;
-        }
+        if (error) throw error;
 
-        // Get recent notifications for caregiver
         const { data: notifications } = await supabaseAdmin
             .from('notifications')
             .select('*')
@@ -51,7 +59,6 @@ export const getDashboard = async (req: Request, res: Response) => {
             .order('created_at', { ascending: false })
             .limit(10);
 
-        // Get statistics
         const today = moment().format('YYYY-MM-DD');
         const { data: todaysLogs } = await supabaseAdmin
             .from('daily_logs')
@@ -73,13 +80,39 @@ export const getDashboard = async (req: Request, res: Response) => {
             last_updated: new Date().toISOString()
         });
     } catch (error) {
-        console.error('Dashboard error:', error);
         res.status(500).json({ error: 'Failed to load dashboard' });
     }
 };
 
 /**
- * Get patient logs (Read-only for caregiver)
+ * @swagger
+ * /api/caregiver/patients/{patientId}/logs:
+ *   get:
+ *     summary: Get patient logs (Caregiver only)
+ *     tags: [Caregiver]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: patientId
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: start_date
+ *         schema:
+ *           type: string
+ *           format: date
+ *       - in: query
+ *         name: end_date
+ *         schema:
+ *           type: string
+ *           format: date
+ *     responses:
+ *       200:
+ *         description: Logs retrieved successfully
+ *       500:
+ *         description: Internal server error
  */
 export const getPatientLogs = async (req: Request, res: Response) => {
     try {
@@ -95,7 +128,6 @@ export const getPatientLogs = async (req: Request, res: Response) => {
             .select('*', { count: 'exact' })
             .eq('patient_id', patientId);
 
-        // Apply date filters
         if (start_date) {
             query = query.gte('date', start_date);
         }
@@ -104,23 +136,18 @@ export const getPatientLogs = async (req: Request, res: Response) => {
             query = query.lte('date', end_date);
         }
 
-        // Apply pagination and ordering
         const { data: logs, error, count } = await query
             .order('date', { ascending: false })
             .range(offset, offset + limit - 1);
 
-        if (error) {
-            throw error;
-        }
+        if (error) throw error;
 
-        // Get patient info
         const { data: patient } = await supabaseAdmin
             .from('patients')
             .select('full_name, current_medications')
             .eq('id', patientId)
             .single();
 
-        // Calculate medication adherence
         const adherenceStats = calculateAdherenceStats(logs || []);
 
         res.json({
@@ -135,13 +162,36 @@ export const getPatientLogs = async (req: Request, res: Response) => {
             }
         });
     } catch (error) {
-        console.error('Get patient logs error:', error);
         res.status(500).json({ error: 'Failed to fetch patient logs' });
     }
 };
 
 /**
- * Get single log details (Read-only for caregiver)
+ * @swagger
+ * /api/caregiver/patients/{patientId}/logs/{logId}:
+ *   get:
+ *     summary: Get single log details (Caregiver only)
+ *     tags: [Caregiver]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: patientId
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: logId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Log details retrieved successfully
+ *       404:
+ *         description: Log not found
+ *       500:
+ *         description: Internal server error
  */
 export const getLogDetails = async (req: Request, res: Response) => {
     try {
@@ -160,13 +210,31 @@ export const getLogDetails = async (req: Request, res: Response) => {
 
         res.json(log);
     } catch (error) {
-        console.error('Get log error:', error);
         res.status(500).json({ error: 'Failed to fetch log' });
     }
 };
 
 /**
- * Get patient details (Read-only for caregiver)
+ * @swagger
+ * /api/caregiver/patients/{patientId}:
+ *   get:
+ *     summary: Get patient clinical details (Caregiver only)
+ *     tags: [Caregiver]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: patientId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Patient details retrieved successfully
+ *       404:
+ *         description: Patient not found
+ *       500:
+ *         description: Internal server error
  */
 export const getPatientDetails = async (req: Request, res: Response) => {
     try {
@@ -196,7 +264,6 @@ export const getPatientDetails = async (req: Request, res: Response) => {
 
         res.json(patient);
     } catch (error) {
-        console.error('Get patient details error:', error);
         res.status(500).json({ error: 'Failed to fetch patient details' });
     }
 };
@@ -250,27 +317,55 @@ const calculateAdherenceStats = (logs: any[]) => {
 // User asked to distribute properly. I'll put report logic in `reportController.ts`? 
 // Or just keep `generateReport` here for now since it is caregiver specific.
 
+
+/**
+ * @swagger
+ * /api/caregiver/patients/{patientId}/report:
+ *   get:
+ *     summary: Generate comprehensive patient report (Caregiver only)
+ *     tags: [Caregiver]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: patientId
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: start_date
+ *         schema:
+ *           type: string
+ *           format: date
+ *       - in: query
+ *         name: end_date
+ *         schema:
+ *           type: string
+ *           format: date
+ *     responses:
+ *       200:
+ *         description: Report generated successfully
+ *       500:
+ *         description: Internal server error
+ */
 export const generatePatientReport = async (req: Request, res: Response) => {
     try {
         const { patientId } = req.params;
         const start_date = req.query.start_date as string;
         const end_date = req.query.end_date as string;
 
-        // Set default date range (last 30 days)
         const defaultStartDate = moment().subtract(30, 'days').format('YYYY-MM-DD');
         const defaultEndDate = moment().format('YYYY-MM-DD');
 
         const startDate = start_date || defaultStartDate;
         const endDate = end_date || defaultEndDate;
 
-        // Get patient details
         const { data: patient } = await supabaseAdmin
             .from('patients')
             .select('*')
             .eq('id', patientId)
             .single();
 
-        // Get logs within date range
         const { data: logs } = await supabaseAdmin
             .from('daily_logs')
             .select('*')
@@ -279,13 +374,9 @@ export const generatePatientReport = async (req: Request, res: Response) => {
             .lte('date', endDate)
             .order('date', { ascending: true });
 
-        // Calculate statistics
         const stats = calculateReportStatistics(logs || []);
-
-        // Generate insights
         const insights = generateInsights(logs || [], stats);
 
-        // Prepare report
         const report = {
             patient: {
                 id: patient.id,
@@ -315,7 +406,6 @@ export const generatePatientReport = async (req: Request, res: Response) => {
 
         res.json(report);
     } catch (error) {
-        console.error('Generate report error:', error);
         res.status(500).json({ error: 'Failed to generate report' });
     }
 };

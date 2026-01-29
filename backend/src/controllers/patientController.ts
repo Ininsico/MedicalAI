@@ -73,8 +73,65 @@ const checkForUnusualPatterns = async (patientId: string, log: any) => {
     }
 };
 
+
 /**
- * Create daily log (Patient or Admin only - Caregiver cannot create)
+ * @swagger
+ * /api/patients/{patientId}/logs:
+ *   post:
+ *     summary: Create a daily log entry (Patient or Admin only)
+ *     tags: [Patient]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: patientId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - date
+ *               - mood
+ *             properties:
+ *               date:
+ *                 type: string
+ *                 format: date
+ *               mood:
+ *                 type: string
+ *               symptoms:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               medication_taken:
+ *                 type: boolean
+ *               medication_notes:
+ *                 type: string
+ *               food_intake:
+ *                 type: string
+ *               sleep_hours:
+ *                 type: number
+ *               activity_level:
+ *                 type: string
+ *               tremor_severity:
+ *                 type: integer
+ *               stiffness_severity:
+ *                 type: integer
+ *               notes:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Daily log created successfully
+ *       400:
+ *         description: Missing required fields or duplicate log for date
+ *       403:
+ *         description: Not authorized
+ *       500:
+ *         description: Internal server error
  */
 export const createDailyLog = async (req: Request, res: Response) => {
     try {
@@ -91,7 +148,6 @@ export const createDailyLog = async (req: Request, res: Response) => {
             notes
         } = req.body;
 
-        // Check if user is patient themselves or admin
         const { data: user } = await supabaseAdmin
             .from('users')
             .select('role')
@@ -104,17 +160,13 @@ export const createDailyLog = async (req: Request, res: Response) => {
             return res.status(403).json({ error: 'Not authorized to create logs' });
         }
 
-        // HEAL: Check if patient profile exists, create if missing (for legacy users)
         const { data: patientProfile, error: profileError } = await supabaseAdmin
             .from('patients')
             .select('id')
             .eq('id', patientId)
             .single();
 
-        if (profileError && profileError.code === 'PGRST116') { // PGRST116 is "no rows found"
-            console.log(`[HEAL] Patient profile missing for ID ${patientId}. Attempting auto-creation...`);
-
-            // Auto-create minimal profile
+        if (profileError && profileError.code === 'PGRST116') {
             const { data: userRecord } = await supabaseAdmin
                 .from('users')
                 .select('full_name, phone')
@@ -136,18 +188,14 @@ export const createDailyLog = async (req: Request, res: Response) => {
                 ]);
 
             if (healError) {
-                console.error('[HEAL] Failed to auto-create patient profile:', healError);
                 return res.status(500).json({ error: 'Patient profile missing and could not be auto-created' });
             }
-            console.log(`[HEAL] Successfully created patient profile for ${patientId}`);
         }
 
-        // Validate required fields
         if (!date || !mood) {
             return res.status(400).json({ error: 'Date and mood are required' });
         }
 
-        // Check if log already exists for this date
         const { data: existingLog } = await supabaseAdmin
             .from('daily_logs')
             .select('id')
@@ -159,7 +207,6 @@ export const createDailyLog = async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'Log already exists for this date' });
         }
 
-        // Create daily log
         const { data: log, error } = await supabaseAdmin
             .from('daily_logs')
             .insert([
@@ -182,14 +229,10 @@ export const createDailyLog = async (req: Request, res: Response) => {
             .select()
             .single();
 
-        if (error) {
-            throw error;
-        }
+        if (error) throw error;
 
-        // Check for unusual patterns and create notifications
         await checkForUnusualPatterns(patientId, log);
 
-        // Log the creation
         await supabaseAdmin
             .from('audit_logs')
             .insert([
@@ -207,25 +250,37 @@ export const createDailyLog = async (req: Request, res: Response) => {
             log
         });
     } catch (error) {
-        console.error('Detailed Create log error:', error);
         res.status(500).json({
-            error: 'Failed to create daily log',
-            details: process.env.NODE_ENV === 'development' ? (error as any).message : undefined
+            error: 'Failed to create daily log'
         });
     }
 };
 
 /**
- * Get daily logs for a patient
+ * @swagger
+ * /api/patients/{patientId}/logs:
+ *   get:
+ *     summary: Get all daily logs for a patient
+ *     tags: [Patient]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: patientId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Logs retrieved successfully
+ *       403:
+ *         description: Not authorized
+ *       500:
+ *         description: Internal server error
  */
 export const getDailyLogs = async (req: Request, res: Response) => {
     try {
         const patientId = req.params.patientId as string;
-
-        // Check authorization
-        // Caregivers can view logs of their assigned patients
-        // Admins can view all
-        // Patients can view their own
 
         const { data: user } = await supabaseAdmin
             .from('users')
@@ -238,7 +293,6 @@ export const getDailyLogs = async (req: Request, res: Response) => {
         if (user?.role === 'admin' || req.user.userId === patientId) {
             authorized = true;
         } else if (user?.role === 'caregiver') {
-            // Check assignment
             const { data: assignment } = await supabaseAdmin
                 .from('caregiver_assignments')
                 .select('id')
@@ -264,18 +318,36 @@ export const getDailyLogs = async (req: Request, res: Response) => {
 
         res.json(logs);
     } catch (error) {
-        console.error('Get logs error:', error);
         res.status(500).json({ error: 'Failed to fetch logs' });
     }
 };
+
 /**
- * Get assigned caregivers for a patient
+ * @swagger
+ * /api/patients/{patientId}/caregivers:
+ *   get:
+ *     summary: Get assigned caregivers for a patient
+ *     tags: [Patient]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: patientId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Caregivers retrieved successfully
+ *       403:
+ *         description: Not authorized
+ *       500:
+ *         description: Internal server error
  */
 export const getCaregivers = async (req: Request, res: Response) => {
     try {
         const patientId = req.params.patientId as string;
 
-        // Check authorization (Patient themselves, admin, or a caregiver assigned to them)
         const { data: user } = await supabaseAdmin
             .from('users')
             .select('role')
@@ -295,7 +367,7 @@ export const getCaregivers = async (req: Request, res: Response) => {
             .from('caregiver_assignments')
             .select(`
                 id,
-                role,
+                assignment_notes,
                 created_at,
                 caregiver:users!caregiver_assignments_caregiver_id_fkey (
                     id,
@@ -311,7 +383,6 @@ export const getCaregivers = async (req: Request, res: Response) => {
 
         res.json(caregivers);
     } catch (error) {
-        console.error('Get caregivers error:', error);
         res.status(500).json({ error: 'Failed to fetch caregiver network' });
     }
 };

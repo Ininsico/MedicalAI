@@ -4,19 +4,50 @@ import { supabaseAdmin } from '../lib/supabaseClient';
 import { sendEmail } from '../utils/emailUtils';
 import bcrypt from 'bcryptjs';
 
+
 /**
- * Create a new caregiver (Admin only)
+ * @swagger
+ * /api/admin/caregivers:
+ *   post:
+ *     summary: Create a new caregiver (Admin only)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *               - password
+ *               - full_name
+ *             properties:
+ *               email:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *               full_name:
+ *                 type: string
+ *               phone:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Caregiver created successfully
+ *       400:
+ *         description: Missing required fields or user already exists
+ *       500:
+ *         description: Internal server error
  */
 export const createCaregiver = async (req: Request, res: Response) => {
     try {
         const { email, password, full_name, phone } = req.body;
 
-        // Validate required fields
         if (!email || !password || !full_name) {
             return res.status(400).json({ error: 'Missing required fields' });
         }
 
-        // Check if user already exists
         const { data: existingUser } = await supabaseAdmin
             .from('users')
             .select('id')
@@ -27,10 +58,8 @@ export const createCaregiver = async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'User with this email already exists' });
         }
 
-        // Hash password
         const hashedPassword = await bcrypt.hash(password, 10);
 
-        // Create caregiver user
         const { data: user, error } = await supabaseAdmin
             .from('users')
             .insert([
@@ -41,17 +70,14 @@ export const createCaregiver = async (req: Request, res: Response) => {
                     role: 'caregiver',
                     phone: phone || '',
                     is_active: true,
-                    email_verified: true // Admin created accounts are verified by default
+                    email_verified: true
                 }
             ])
             .select()
             .single();
 
-        if (error) {
-            throw error;
-        }
+        if (error) throw error;
 
-        // Log the creation
         await supabaseAdmin
             .from('audit_logs')
             .insert([
@@ -64,7 +90,6 @@ export const createCaregiver = async (req: Request, res: Response) => {
                 }
             ]);
 
-        // Send welcome email with credentials
         const welcomeEmail = `
             <h1>Welcome to ParkiTrack</h1>
             <p>Hello ${full_name},</p>
@@ -79,8 +104,7 @@ export const createCaregiver = async (req: Request, res: Response) => {
         try {
             await sendEmail(email, 'Your Caregiver Account Credentials', welcomeEmail);
         } catch (emailError) {
-            console.error('Failed to send welcome email:', emailError);
-            // We don't fail the whole request just because email failed
+            // Email failure is non-blocking
         }
 
         res.status(201).json({
@@ -93,13 +117,31 @@ export const createCaregiver = async (req: Request, res: Response) => {
             }
         });
     } catch (error) {
-        console.error('Create caregiver error:', error);
         res.status(500).json({ error: 'Failed to create caregiver' });
     }
 };
 
 /**
- * Create a new patient (Admin only)
+ * @swagger
+ * /api/admin/patients:
+ *   post:
+ *     summary: Create a new patient profile (Admin only)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/Patient'
+ *     responses:
+ *       201:
+ *         description: Patient created successfully
+ *       400:
+ *         description: Missing required fields
+ *       500:
+ *         description: Internal server error
  */
 export const createPatient = async (req: Request, res: Response) => {
     try {
@@ -119,12 +161,10 @@ export const createPatient = async (req: Request, res: Response) => {
             notes
         } = req.body;
 
-        // Validate required fields
         if (!full_name || !date_of_birth || !gender || !contact_number) {
             return res.status(400).json({ error: 'Missing required fields' });
         }
 
-        // Create patient record
         const { data: patient, error } = await supabaseAdmin
             .from('patients')
             .insert([
@@ -149,11 +189,8 @@ export const createPatient = async (req: Request, res: Response) => {
             .select()
             .single();
 
-        if (error) {
-            throw error;
-        }
+        if (error) throw error;
 
-        // Log the creation
         await supabaseAdmin
             .from('audit_logs')
             .insert([
@@ -171,13 +208,37 @@ export const createPatient = async (req: Request, res: Response) => {
             patient
         });
     } catch (error) {
-        console.error('Create patient error:', error);
         res.status(500).json({ error: 'Failed to create patient' });
     }
 };
 
+
 /**
- * Get all patients (Admin only)
+ * @swagger
+ * /api/admin/patients:
+ *   get:
+ *     summary: Get all patients with pagination and search (Admin only)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: List of patients retrieved successfully
+ *       500:
+ *         description: Internal server error
  */
 export const getAllPatients = async (req: Request, res: Response) => {
     try {
@@ -186,7 +247,6 @@ export const getAllPatients = async (req: Request, res: Response) => {
         const search = (req.query.search as string) || '';
         const offset = (page - 1) * limit;
 
-        // Fetch users who are patients (Source of Truth for accounts)
         let userQuery = supabaseAdmin
             .from('users')
             .select('*', { count: 'exact' })
@@ -210,18 +270,23 @@ export const getAllPatients = async (req: Request, res: Response) => {
             });
         }
 
-        // Fetch corresponding clinical data from patients table
         const userIds = users.map(u => u.id);
-        const { data: clinicalData, error: clinicalError } = await supabaseAdmin
-            .from('patients')
-            .select('*')
-            .in('id', userIds);
+        const [clinicalRes, assignmentsRes] = await Promise.all([
+            supabaseAdmin.from('patients').select('*').in('id', userIds),
+            supabaseAdmin.from('caregiver_assignments')
+                .select('patient_id, caregiver:users!caregiver_assignments_caregiver_id_fkey(full_name)')
+                .in('patient_id', userIds)
+                .eq('status', 'active')
+        ]);
 
-        if (clinicalError) throw clinicalError;
+        const clinicalData = clinicalRes.data;
+        const assignmentsData = assignmentsRes.data;
 
-        // Merge clinical data into user objects
         const mergedPatients = users.map(user => {
             const clinical = clinicalData?.find(c => c.id === user.id);
+            const assignments = assignmentsData?.filter(a => a.patient_id === user.id) || [];
+            const primaryCaregiver = (assignments[0]?.caregiver as any)?.full_name;
+
             return {
                 id: user.id,
                 full_name: user.full_name,
@@ -231,7 +296,8 @@ export const getAllPatients = async (req: Request, res: Response) => {
                 created_at: user.created_at,
                 status: clinical?.status || 'Active (Account Only)',
                 contact_number: clinical?.contact_number || user.phone,
-                doctor_name: clinical?.doctor_name || 'Unassigned',
+                doctor_name: clinical?.doctor_name || primaryCaregiver || 'Unassigned',
+                caregiver_count: assignments.length,
                 is_active: user.is_active
             };
         });
@@ -246,19 +312,36 @@ export const getAllPatients = async (req: Request, res: Response) => {
             }
         });
     } catch (error) {
-        console.error('Get patients error:', error);
         res.status(500).json({ error: 'Failed to fetch patients' });
     }
 };
 
 /**
- * Get single patient details (Admin only)
+ * @swagger
+ * /api/admin/patients/{id}:
+ *   get:
+ *     summary: Get single patient details (Admin only)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Patient details retrieved successfully
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Internal server error
  */
 export const getPatientById = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
 
-        // Fetch User record first
         const { data: user, error: userError } = await supabaseAdmin
             .from('users')
             .select('*')
@@ -269,26 +352,23 @@ export const getPatientById = async (req: Request, res: Response) => {
             return res.status(404).json({ error: 'User not found' });
         }
 
-        // Fetch Clinical Data
         const { data: clinical, error: clinicalError } = await supabaseAdmin
             .from('patients')
             .select('*')
             .eq('id', id)
             .single();
 
-        // Fetch Logs
         const { data: logs, error: logsError } = await supabaseAdmin
             .from('daily_logs')
             .select('*')
             .eq('patient_id', id)
             .order('date', { ascending: false });
 
-        // Fetch Assignments
         const { data: assignments, error: assignError } = await supabaseAdmin
             .from('caregiver_assignments')
             .select(`
                 *,
-                caregiver:users (
+                caregiver:users!caregiver_assignments_caregiver_id_fkey (
                     id,
                     full_name,
                     email,
@@ -305,20 +385,44 @@ export const getPatientById = async (req: Request, res: Response) => {
             assignments: assignments || []
         });
     } catch (error) {
-        console.error('Get patient error:', error);
         res.status(500).json({ error: 'Failed to fetch patient details' });
     }
 };
 
+
 /**
- * Update patient (Admin only)
+ * @swagger
+ * /api/admin/patients/{id}:
+ *   put:
+ *     summary: Update patient profile (Admin only)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/Patient'
+ *     responses:
+ *       200:
+ *         description: Patient updated successfully
+ *       404:
+ *         description: Patient not found
+ *       500:
+ *         description: Internal server error
  */
 export const updatePatient = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         const updateData = req.body;
 
-        // Check if patient exists
         const { data: existingPatient } = await supabaseAdmin
             .from('patients')
             .select('id')
@@ -329,7 +433,6 @@ export const updatePatient = async (req: Request, res: Response) => {
             return res.status(404).json({ error: 'Patient not found' });
         }
 
-        // Update patient
         const { data: patient, error } = await supabaseAdmin
             .from('patients')
             .update({
@@ -341,11 +444,8 @@ export const updatePatient = async (req: Request, res: Response) => {
             .select()
             .single();
 
-        if (error) {
-            throw error;
-        }
+        if (error) throw error;
 
-        // Log the update
         await supabaseAdmin
             .from('audit_logs')
             .insert([
@@ -363,19 +463,36 @@ export const updatePatient = async (req: Request, res: Response) => {
             patient
         });
     } catch (error) {
-        console.error('Update patient error:', error);
         res.status(500).json({ error: 'Failed to update patient' });
     }
 };
 
 /**
- * Delete patient (Admin only - soft delete)
+ * @swagger
+ * /api/admin/patients/{id}:
+ *   delete:
+ *     summary: Delete patient (Admin only - soft delete)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Patient deleted successfully
+ *       404:
+ *         description: Patient not found
+ *       500:
+ *         description: Internal server error
  */
 export const deletePatient = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
 
-        // Soft delete patient
         const { data: patient, error } = await supabaseAdmin
             .from('patients')
             .update({
@@ -391,7 +508,6 @@ export const deletePatient = async (req: Request, res: Response) => {
             return res.status(404).json({ error: 'Patient not found' });
         }
 
-        // Log the deletion
         await supabaseAdmin
             .from('audit_logs')
             .insert([
@@ -408,24 +524,52 @@ export const deletePatient = async (req: Request, res: Response) => {
             message: 'Patient deleted successfully'
         });
     } catch (error) {
-        console.error('Delete patient error:', error);
         res.status(500).json({ error: 'Failed to delete patient' });
     }
 };
 
 /**
- * Assign caregiver to patient (Admin only)
+ * @swagger
+ * /api/admin/assignments:
+ *   post:
+ *     summary: Assign caregiver to patient (Admin only)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - patient_id
+ *               - caregiver_id
+ *             properties:
+ *               patient_id:
+ *                 type: string
+ *               caregiver_id:
+ *                 type: string
+ *               assignment_notes:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Caregiver assigned successfully
+ *       400:
+ *         description: Caregiver already assigned
+ *       404:
+ *         description: Patient or Caregiver not found
+ *       500:
+ *         description: Internal server error
  */
 export const assignCaregiver = async (req: Request, res: Response) => {
     try {
         const { patient_id, caregiver_id, assignment_notes } = req.body;
 
-        // Validate input
         if (!patient_id || !caregiver_id) {
             return res.status(400).json({ error: 'Patient ID and Caregiver ID required' });
         }
 
-        // Check if patient exists and is active
         const { data: patient } = await supabaseAdmin
             .from('patients')
             .select('id, full_name, status')
@@ -437,7 +581,6 @@ export const assignCaregiver = async (req: Request, res: Response) => {
             return res.status(404).json({ error: 'Active patient not found' });
         }
 
-        // Check if caregiver exists and has correct role
         const { data: caregiver } = await supabaseAdmin
             .from('users')
             .select('id, full_name, role, email')
@@ -450,7 +593,6 @@ export const assignCaregiver = async (req: Request, res: Response) => {
             return res.status(404).json({ error: 'Active caregiver not found' });
         }
 
-        // Check if assignment already exists
         const { data: existingAssignment } = await supabaseAdmin
             .from('caregiver_assignments')
             .select('id')
@@ -463,7 +605,6 @@ export const assignCaregiver = async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'Caregiver already assigned to this patient' });
         }
 
-        // Create assignment
         const { data: assignment, error } = await supabaseAdmin
             .from('caregiver_assignments')
             .insert([
@@ -479,15 +620,12 @@ export const assignCaregiver = async (req: Request, res: Response) => {
             .select(`
         *,
         patient:patients (full_name, contact_number),
-        caregiver:users (full_name, email)
+        caregiver:users!caregiver_assignments_caregiver_id_fkey (full_name, email)
       `)
             .single();
 
-        if (error) {
-            throw error;
-        }
+        if (error) throw error;
 
-        // Send notification email to caregiver
         const assignmentEmail = `
       <h1>New Patient Assignment</h1>
       <p>Hello ${caregiver.full_name},</p>
@@ -503,7 +641,6 @@ export const assignCaregiver = async (req: Request, res: Response) => {
 
         await sendEmail(caregiver.email, 'New Patient Assignment', assignmentEmail);
 
-        // Log the assignment
         await supabaseAdmin
             .from('audit_logs')
             .insert([
@@ -521,13 +658,38 @@ export const assignCaregiver = async (req: Request, res: Response) => {
             assignment
         });
     } catch (error) {
-        console.error('Assign caregiver error:', error);
         res.status(500).json({ error: 'Failed to assign caregiver' });
     }
 };
 
+
 /**
- * Get all caregiver assignments (Admin only)
+ * @swagger
+ * /api/admin/assignments:
+ *   get:
+ *     summary: Get all caregiver assignments (Admin only)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: patient_id
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: caregiver_id
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           default: active
+ *     responses:
+ *       200:
+ *         description: List of assignments retrieved successfully
+ *       500:
+ *         description: Internal server error
  */
 export const getAllAssignments = async (req: Request, res: Response) => {
     try {
@@ -538,11 +700,10 @@ export const getAllAssignments = async (req: Request, res: Response) => {
             .select(`
         *,
         patient:patients (id, full_name, contact_number, status),
-        caregiver:users (id, full_name, email, phone),
+        caregiver:users!caregiver_assignments_caregiver_id_fkey (id, full_name, email, phone),
         assigned_by_user:users!caregiver_assignments_assigned_by_fkey (full_name, email)
       `);
 
-        // Apply filters
         if (patient_id) {
             query = query.eq('patient_id', patient_id);
         }
@@ -559,31 +720,46 @@ export const getAllAssignments = async (req: Request, res: Response) => {
 
         const { data: assignments, error } = await query;
 
-        if (error) {
-            throw error;
-        }
+        if (error) throw error;
 
         res.json(assignments);
     } catch (error) {
-        console.error('Get assignments error:', error);
         res.status(500).json({ error: 'Failed to fetch assignments' });
     }
 };
 
 /**
- * Remove caregiver assignment (Admin only)
+ * @swagger
+ * /api/admin/assignments/{id}:
+ *   delete:
+ *     summary: Remove caregiver assignment (Admin only)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Assignment removed successfully
+ *       404:
+ *         description: Assignment not found
+ *       500:
+ *         description: Internal server error
  */
 export const removeAssignment = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
 
-        // Get assignment details before removal
         const { data: assignment } = await supabaseAdmin
             .from('caregiver_assignments')
             .select(`
         *,
         patient:patients (full_name),
-        caregiver:users (full_name, email)
+        caregiver:users!caregiver_assignments_caregiver_id_fkey (full_name, email)
       `)
             .eq('id', id)
             .single();
@@ -592,7 +768,6 @@ export const removeAssignment = async (req: Request, res: Response) => {
             return res.status(404).json({ error: 'Assignment not found' });
         }
 
-        // Remove assignment (soft delete)
         const { error } = await supabaseAdmin
             .from('caregiver_assignments')
             .update({
@@ -602,11 +777,8 @@ export const removeAssignment = async (req: Request, res: Response) => {
             })
             .eq('id', id);
 
-        if (error) {
-            throw error;
-        }
+        if (error) throw error;
 
-        // Send notification email to caregiver
         const removalEmail = `
       <h1>Patient Assignment Ended</h1>
       <p>Hello ${assignment.caregiver.full_name},</p>
@@ -618,7 +790,6 @@ export const removeAssignment = async (req: Request, res: Response) => {
 
         await sendEmail(assignment.caregiver.email, 'Patient Assignment Ended', removalEmail);
 
-        // Log the removal
         await supabaseAdmin
             .from('audit_logs')
             .insert([
@@ -635,13 +806,23 @@ export const removeAssignment = async (req: Request, res: Response) => {
             message: 'Assignment removed successfully'
         });
     } catch (error) {
-        console.error('Remove assignment error:', error);
         res.status(500).json({ error: 'Failed to remove assignment' });
     }
 };
 
 /**
- * Get all caregivers (Admin only)
+ * @swagger
+ * /api/admin/caregivers:
+ *   get:
+ *     summary: Get all caregivers (Admin only)
+ *     tags: [Admin]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of caregivers retrieved successfully
+ *       500:
+ *         description: Internal server error
  */
 export const getAllCaregivers = async (req: Request, res: Response) => {
     try {
@@ -655,7 +836,6 @@ export const getAllCaregivers = async (req: Request, res: Response) => {
 
         res.json(caregivers);
     } catch (error) {
-        console.error('Get caregivers error:', error);
         res.status(500).json({ error: 'Failed to fetch caregivers' });
     }
 };

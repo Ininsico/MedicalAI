@@ -42,6 +42,9 @@ export const api = {
     caregiver: {
         getDashboard: () => request<any>('/caregiver/dashboard', 'GET'),
         getPatients: () => request<any>('/caregiver/patients', 'GET'),
+        getPatientLogs: (patientId: string) => request<any>(`/caregiver/patients/${patientId}/logs`, 'GET'),
+        getPatientDetails: (patientId: string) => request<any>(`/caregiver/patients/${patientId}`, 'GET'),
+        generateReport: (patientId: string) => request<any>(`/caregiver/patients/${patientId}/report`, 'GET'),
     },
     notifications: {
         getAll: () => request<any>('/notifications', 'GET'),

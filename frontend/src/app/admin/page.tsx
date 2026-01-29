@@ -241,10 +241,18 @@ export default function AdminPage() {
                                                             {patient.last_login ? new Date(patient.last_login).toLocaleString() : 'System Offline'}
                                                         </td>
                                                         <td className="py-6">
-                                                            <div className="flex items-center space-x-2 text-slate-300">
-                                                                <Stethoscope size={16} className="text-teal-500" />
-                                                                <span className="text-sm font-bold">{patient.doctor_name || 'Unassigned'}</span>
-                                                                <UserCog size={14} className="text-slate-600 hover:text-teal-500 cursor-pointer transition-colors" />
+                                                            <div className="flex flex-col space-y-1">
+                                                                <div className="flex items-center space-x-2 text-slate-300">
+                                                                    <Stethoscope size={16} className="text-teal-500" />
+                                                                    <span className="text-sm font-bold">{patient.doctor_name || 'Unassigned'}</span>
+                                                                </div>
+                                                                {patient.caregiver_count > 0 && (
+                                                                    <div className="flex items-center space-x-2">
+                                                                        <div className="px-2 py-0.5 bg-cyan-500/10 text-cyan-500 rounded text-[8px] font-black uppercase tracking-widest border border-cyan-500/10">
+                                                                            +{patient.caregiver_count} Clinical Node{patient.caregiver_count > 1 ? 's' : ''}
+                                                                        </div>
+                                                                    </div>
+                                                                )}
                                                             </div>
                                                         </td>
                                                         <td className="py-6 pr-8 text-right">
@@ -445,7 +453,7 @@ export default function AdminPage() {
                                                                 <div className="space-y-3">
                                                                     <div className="flex justify-between text-[10px]">
                                                                         <span className="text-slate-600 font-black uppercase">Role</span>
-                                                                        <span className="text-cyan-400 font-bold uppercase">{assign.role || 'Primary care'}</span>
+                                                                        <span className="text-cyan-400 font-bold uppercase">{assign.assignment_notes || 'Primary care'}</span>
                                                                     </div>
                                                                     <div className="flex justify-between text-[10px]">
                                                                         <span className="text-slate-600 font-black uppercase">Linked Since</span>
@@ -662,9 +670,32 @@ export default function AdminPage() {
                 isOpen={isAssignModalOpen}
                 onClose={() => setIsAssignModalOpen(false)}
                 patientId={selectedPatient?.id || ''}
-                onSuccess={() => {
+                onSuccess={async () => {
                     if (selectedPatient?.id) {
-                        api.admin.getPatientDetails(selectedPatient.id).then(setPatientDetails);
+                        try {
+                            const [details, patientsRes, healthRes] = await Promise.all([
+                                api.admin.getPatientDetails(selectedPatient.id),
+                                api.admin.getPatients(),
+                                api.admin.getSystemHealth()
+                            ]);
+                            setPatientDetails(details);
+                            if (patientsRes && patientsRes.patients) {
+                                setPatients(patientsRes.patients);
+                                const updated = patientsRes.patients.find((p: any) => p.id === selectedPatient.id);
+                                if (updated) setSelectedPatient(updated);
+                            }
+                            if (healthRes) {
+                                setHealthData(healthRes);
+                                setStats({
+                                    totalPatients: healthRes.statistics?.total_patients || 0,
+                                    activeCaregivers: healthRes.statistics?.total_caregivers || 0,
+                                    systemHealth: healthRes.status === 'ok' ? 'Nominal' : 'Warning',
+                                    totalLogs: healthRes.statistics?.total_logs || 0
+                                });
+                            }
+                        } catch (err) {
+                            console.error("Refresh error after assignment:", err);
+                        }
                     }
                 }}
             />

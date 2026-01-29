@@ -8,9 +8,14 @@ import { FileText, Download, Calendar, Activity, CheckCircle2, AlertCircle, Shie
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
+import { useSearchParams } from 'next/navigation';
+
 export default function ReportsPage() {
+    const searchParams = useSearchParams();
+    const patientId = searchParams.get('u');
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
+    const [patientInfo, setPatientInfo] = useState<any>(null);
 
     const generatePDF = async () => {
         setLoading(true);
@@ -23,7 +28,19 @@ export default function ReportsPage() {
             }
             const user = JSON.parse(userStr);
 
-            const logs = await api.patient.getLogs(user.id);
+            let logs = [];
+            let reportPatientId = user.id;
+            let reportPatientName = user.full_name;
+
+            if (user.role === 'caregiver' && patientId) {
+                const res = await api.caregiver.getPatientLogs(patientId);
+                logs = res.logs || [];
+                setPatientInfo(res.patient);
+                reportPatientId = patientId;
+                reportPatientName = res.patient?.full_name || 'Patient';
+            } else {
+                logs = await api.patient.getLogs(user.id);
+            }
 
             if (!logs || logs.length === 0) {
                 alert("No clinical data available for report generation.");
@@ -38,23 +55,24 @@ export default function ReportsPage() {
             doc.text("Clinical Symptom Report", 14, 22);
             doc.setFontSize(10);
             doc.setTextColor(100);
-            doc.text(`Patient ID: ${user.id.substring(0, 8)}...`, 14, 30);
-            doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 35);
+            doc.text(`Patient: ${reportPatientName}`, 14, 30);
+            doc.text(`Patient ID: ${reportPatientId.substring(0, 8)}...`, 14, 35);
+            doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 40);
 
             // Horizontal Line
             doc.setDrawColor(200);
-            doc.line(14, 40, 196, 40);
+            doc.line(14, 45, 196, 45);
 
             // Summary Section
             doc.setFontSize(14);
             doc.setTextColor(0);
-            doc.text("Executive Summary", 14, 50);
+            doc.text("Executive Summary", 14, 55);
             doc.setFontSize(10);
-            doc.text(`This report covers the last ${logs.length} logged intervals. Current tremor levels average ${(logs.reduce((a: any, b: any) => a + (b.tremor_severity || b.tremor || 0), 0) / logs.length).toFixed(1)}/10.`, 14, 58);
+            doc.text(`This report covers the last ${logs.length} logged intervals. Current tremor levels average ${(logs.reduce((a: any, b: any) => a + (b.tremor_severity || b.tremor || 0), 0) / logs.length).toFixed(1)}/10.`, 14, 63);
 
             // Table
             autoTable(doc, {
-                startY: 70,
+                startY: 75,
                 head: [['Date', 'Tremor', 'Stiffness', 'Sleep', 'Meds']],
                 body: logs.map((log: any) => [
                     new Date(log.date || log.logged_at).toLocaleDateString(),
@@ -100,7 +118,7 @@ export default function ReportsPage() {
                         <span>Clinical Export Module</span>
                     </div>
                     <h1 className="text-5xl font-black text-slate-900 tracking-tighter">
-                        Analytical <span className="text-slate-400 italic font-serif font-light">Reports</span>
+                        {patientId && patientInfo ? patientInfo.full_name : 'Analytical'} <span className="text-slate-400 italic font-serif font-light">{patientId && patientInfo ? 'Report' : 'Reports'}</span>
                     </h1>
                 </div>
 

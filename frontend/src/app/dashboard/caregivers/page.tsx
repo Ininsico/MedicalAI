@@ -14,6 +14,13 @@ import {
     AlertCircle,
     Stethoscope,
     ChevronRight,
+    Search,
+    Filter,
+    Clock,
+    TrendingUp,
+    FileText,
+    Mail,
+    Phone,
     LogOut
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -22,6 +29,7 @@ export default function CaregiversPage() {
     const [data, setData] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [role, setRole] = useState<'patient' | 'caregiver' | 'admin'>('patient');
+    const [searchQuery, setSearchQuery] = useState('');
 
     useEffect(() => {
         const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -39,22 +47,17 @@ export default function CaregiversPage() {
                                 ? patient.recent_logs[0]
                                 : null;
 
-                            const mappedLog = lastLog ? {
-                                ...lastLog,
-                                logged_at: lastLog.date,
-                                tremor: lastLog.tremor_severity || 0
-                            } : null;
-
                             return {
                                 ...patient,
-                                permissions: 'Full Access',
-                                lastLog: mappedLog
+                                permissions: 'Diagnostic Access',
+                                lastLog: lastLog,
+                                assignment_notes: assignment.assignment_notes,
+                                linked_at: assignment.created_at
                             };
                         });
                         setData(patientsWithStatus);
                     }
                 } else {
-                    // Patient View
                     const res = await api.patient.getCaregivers(user.id);
                     setData(res || []);
                 }
@@ -67,157 +70,160 @@ export default function CaregiversPage() {
         fetchData();
     }, []);
 
+    const filteredData = data.filter(item => {
+        const name = role === 'caregiver' ? item.full_name : item.caregiver?.full_name;
+        return name?.toLowerCase().includes(searchQuery.toLowerCase());
+    });
+
+    const handleLogout = () => {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+    };
+
     return (
         <div className="space-y-12 pb-24">
+            {/* Contextual Header */}
             <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                 <div>
-                    <div className="flex items-center space-x-3 text-teal-600 font-black text-xs uppercase tracking-[0.3em] mb-3">
+                    <div className="flex items-center space-x-3 text-teal-600 font-black text-[10px] uppercase tracking-[0.3em] mb-4">
                         <Users size={14} />
-                        <span>{role === 'patient' ? 'Your Clinical Network' : 'Care Network Management'}</span>
+                        <span>{role === 'patient' ? 'Unified Clinical Network' : 'Global Patient Matrix'}</span>
                     </div>
                     <h1 className="text-5xl font-black text-slate-900 tracking-tighter">
-                        {role === 'patient' ? 'Care' : 'Patient'} <span className="text-slate-400 italic font-serif font-light">{role === 'patient' ? 'Partners' : 'Continuum'}</span>
+                        {role === 'patient' ? 'Care' : 'Node'} <span className="text-slate-400 italic font-serif font-light">{role === 'patient' ? 'Partners' : 'Orchestration'}</span>
                     </h1>
                 </div>
+
                 <div className="flex items-center space-x-4">
-                    {role === 'caregiver' && (
-                        <Button variant="dark" className="rounded-2xl shadow-glow">
-                            <UserPlus size={20} className="mr-2" /> Provision New Link
-                        </Button>
-                    )}
-                    <button
-                        onClick={() => {
-                            localStorage.removeItem('token');
-                            localStorage.removeItem('user');
-                            window.location.href = '/login';
-                        }}
-                        className="p-4 bg-white/50 border border-white text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-2xl shadow-premium backdrop-blur-xl transition-all group"
-                        title="End Session"
-                    >
+                    <div className="relative group">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-teal-500 transition-colors" size={16} />
+                        <input
+                            type="text"
+                            placeholder={role === 'patient' ? "Search providers..." : "Search patient IDs..."}
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="pl-12 pr-6 py-4 bg-white/50 border border-white rounded-2xl text-xs font-black text-slate-900 focus:outline-none focus:ring-4 focus:ring-teal-500/10 w-64 shadow-premium backdrop-blur-xl transition-all"
+                        />
+                    </div>
+                    <button onClick={handleLogout} className="p-4 bg-white/50 border border-white text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-2xl shadow-premium backdrop-blur-xl transition-all group">
                         <LogOut size={20} className="group-hover:rotate-12 transition-transform" />
                     </button>
                 </div>
             </header>
 
             {loading ? (
-                <div className="flex flex-col items-center justify-center h-[40vh] space-y-4">
-                    <div className="w-10 h-10 border-4 border-teal-500 border-t-transparent rounded-full animate-spin" />
-                    <span className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">Synchronizing Matrix</span>
+                <div className="flex flex-col items-center justify-center h-[50vh] space-y-6">
+                    <div className="w-12 h-12 border-4 border-teal-500 border-t-transparent rounded-full animate-spin" />
+                    <span className="text-slate-400 font-black uppercase tracking-[0.2em] text-[10px]">Synchronizing Matrix Nodes</span>
                 </div>
-            ) : data.length === 0 ? (
-                <Card className="p-20 text-center border-dashed border-2 bg-transparent" hover={false}>
-                    <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-6 text-slate-400">
-                        <Users size={32} />
+            ) : filteredData.length === 0 ? (
+                <Card className="p-24 text-center border-dashed border-2 bg-slate-50/30 flex flex-col items-center" hover={false}>
+                    <div className="w-20 h-20 bg-slate-100 rounded-[24px] flex items-center justify-center text-slate-300 mb-8">
+                        <Users size={40} />
                     </div>
-                    <h3 className="text-2xl font-black text-slate-900 mb-2">No Active {role === 'patient' ? 'Caregivers' : 'Patient Links'}</h3>
-                    <p className="text-slate-500 max-w-sm mx-auto mb-8">
+                    <h3 className="text-3xl font-black text-slate-900 mb-4 tracking-tighter">No Active {role === 'patient' ? 'Caregivers' : 'Clinical Links'}</h3>
+                    <p className="text-slate-500 max-w-sm mb-10 font-medium leading-relaxed">
                         {role === 'patient'
-                            ? 'Your clinical network is currently isolated. Ask your doctor to link your profile for remote monitoring.'
-                            : 'Connect with a patient using their unique Medical ID to begin monitoring their clinical stream.'}
+                            ? 'Your clinical telemetry is currently isolated. Connect with a care provider to begin remote monitoring protocols.'
+                            : 'All clinical nodes are currently offline or unassigned. Contact system administration to provision new patient links.'}
                     </p>
-                    {role === 'caregiver' && <Button variant="outline">Learn about Caregiver Roles</Button>}
+                    {role === 'caregiver' ? (
+                        <div className="flex space-x-4">
+                            <Button
+                                onClick={() => alert("Access Request System: Please provide the Patient Medical ID to the System Administrator for secure linkage provisioning.")}
+                                variant="dark"
+                                className="px-8 py-4 rounded-xl text-[10px] uppercase font-black tracking-widest"
+                            >
+                                Inquire Node Access
+                            </Button>
+                            <Button variant="outline" className="px-8 py-4 rounded-xl text-[10px] uppercase font-black tracking-widest">Protocol Guide</Button>
+                        </div>
+                    ) : (
+                        <Button variant="dark" className="px-8 py-4 rounded-xl text-[10px] uppercase font-black tracking-widest">Broadcast Access Code</Button>
+                    )}
                 </Card>
             ) : (
-                <div className="grid grid-cols-1 gap-8">
+                <div className="grid grid-cols-1 gap-6">
                     {role === 'caregiver' ? (
-                        data.map((patient) => (
-                            <PatientMonitorCard key={patient.id} patient={patient} />
+                        filteredData.map((patient) => (
+                            <PatientMatrixCard key={patient.id} patient={patient} />
                         ))
                     ) : (
-                        data.map((assignment) => (
-                            <CaregiverCard key={assignment.id} assignment={assignment} />
+                        filteredData.map((assignment) => (
+                            <CaregiverMatrixCard key={assignment.id} assignment={assignment} />
                         ))
                     )}
                 </div>
             )}
-
-            {/* Role Information */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <Card className="bg-slate-50 border-none p-10" hover={false}>
-                    <div className="flex items-center space-x-4 mb-6">
-                        <ShieldCheck className="text-teal-600" />
-                        <h4 className="font-black text-slate-900 uppercase tracking-tight">Access Permissions</h4>
-                    </div>
-                    <p className="text-slate-500 font-medium leading-relaxed italic font-serif">
-                        "Caregivers can monitor trends and receive notifications for unusual patterns.
-                        Modification of log data requires 'Full Access' authorization from the patient."
-                    </p>
-                </Card>
-                <Card className="bg-slate-900 text-white border-none p-10" hover={false}>
-                    <div className="flex items-center space-x-4 mb-6 text-teal-400">
-                        <Stethoscope size={24} />
-                        <h4 className="font-black uppercase tracking-tight text-sm">Clinical Synergy</h4>
-                    </div>
-                    <p className="text-slate-400 font-medium leading-relaxed">
-                        Jointly review longitudinal reports with patients to prepare for neurology appointments.
-                        Consistent monitoring leads to 40% better clinical outcomes.
-                    </p>
-                </Card>
-            </div>
         </div>
     );
 }
 
-function PatientMonitorCard({ patient }: { patient: any }) {
-    const lastLogDate = patient.lastLog ? new Date(patient.lastLog.logged_at).toLocaleDateString() : 'No data';
-    const isHealthy = patient.lastLog && patient.lastLog.tremor < 6;
+function PatientMatrixCard({ patient }: { patient: any }) {
+    const isStable = (patient.lastLog?.tremor_severity || 0) < 6;
+    const lastSync = patient.lastLog ? new Date(patient.lastLog.created_at).toLocaleDateString() : 'Offline';
 
     return (
-        <Card className="p-0 overflow-hidden border-white/50 shadow-premium" hover={false}>
-            <div className="flex flex-col lg:flex-row lg:h-48">
-                {/* Status Sidebar */}
+        <Card className="p-0 overflow-hidden border-slate-100 shadow-premium transition-all hover:shadow-glow-teal group" hover={false}>
+            <div className="flex flex-col lg:flex-row min-h-[160px]">
                 <div className={cn(
-                    "w-full lg:w-2 bg-slate-100",
-                    isHealthy ? "bg-emerald-500" : "bg-rose-500"
+                    "w-full lg:w-2 transition-all group-hover:w-3",
+                    isStable ? "bg-emerald-500" : "bg-rose-500"
                 )} />
 
-                <div className="flex-1 p-8 flex flex-col md:flex-row items-center justify-between gap-8">
+                <div className="flex-1 p-8 flex flex-col md:flex-row items-center justify-between gap-10">
                     <div className="flex items-center space-x-6">
-                        <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-400">
-                            <Users size={28} />
+                        <div className="w-20 h-20 bg-slate-900 text-white rounded-[24px] flex items-center justify-center font-black text-2xl shadow-xl group-hover:scale-105 transition-transform">
+                            {patient.full_name?.charAt(0)}
                         </div>
                         <div>
-                            <h3 className="text-3xl font-black text-slate-900 tracking-tighter">{patient.full_name}</h3>
-                            <div className="flex items-center space-x-4 mt-1">
-                                <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center">
-                                    <Activity size={12} className="mr-1" /> Monitoring Active
-                                </span>
-                                <span className="text-[10px] font-black uppercase text-teal-600 tracking-widest border border-teal-100 px-2 py-0.5 rounded-full">
-                                    {patient.permissions}
-                                </span>
+                            <h3 className="text-2xl font-black text-slate-900 tracking-tighter mb-1">{patient.full_name}</h3>
+                            <div className="flex items-center space-x-4">
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Node ID: {patient.id.slice(0, 8)}</span>
+                                <span className="w-1 h-1 bg-slate-200 rounded-full" />
+                                <span className="text-[10px] font-bold text-teal-600 uppercase tracking-widest">{patient.permissions}</span>
                             </div>
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-8">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-10">
                         <div className="text-center md:text-left">
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Latest Sync</p>
-                            <p className="font-bold text-slate-900">{lastLogDate}</p>
+                            <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Last Sync</div>
+                            <div className="flex items-center font-black text-slate-900 text-sm">
+                                <Clock size={14} className="mr-2 text-teal-500" />
+                                {lastSync}
+                            </div>
                         </div>
                         <div className="text-center md:text-left">
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Status</p>
+                            <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Stability</div>
                             <div className="flex items-center justify-center md:justify-start space-x-2">
-                                <div className={cn("w-2 h-2 rounded-full", isHealthy ? "bg-emerald-500 animate-pulse" : "bg-rose-500")} />
-                                <span className={cn("font-bold", isHealthy ? "text-emerald-600" : "text-rose-600")}>
-                                    {isHealthy ? 'Stable' : 'Attention Required'}
+                                <div className={cn("w-2 h-2 rounded-full", isStable ? "bg-emerald-500 animate-pulse" : "bg-rose-500")} />
+                                <span className={cn("text-sm font-black uppercase tracking-tight", isStable ? "text-emerald-600" : "text-rose-600")}>
+                                    {isStable ? 'Nominal' : 'Variance'}
                                 </span>
                             </div>
                         </div>
-                        <div className="hidden md:block col-span-1 border-l border-slate-50 pl-8">
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Tremor Index</p>
-                            <p className="text-2xl font-black text-slate-900">{patient.lastLog?.tremor || '0'}<span className="text-slate-300 text-xs ml-1">/10</span></p>
+                        <div className="hidden md:block border-l border-slate-50 pl-10">
+                            <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Tremor Index</div>
+                            <div className="text-2xl font-black text-slate-900 leading-none">
+                                {patient.lastLog?.tremor_severity || '0'}<span className="text-slate-300 text-xs ml-1">/10</span>
+                            </div>
                         </div>
                     </div>
 
-                    <div className="flex space-x-3">
-                        <Link href={`/dashboard/trends?u=${patient.id}`}>
-                            <Button variant="outline" size="sm">Trends</Button>
+                    <div className="flex items-center space-x-3">
+                        <Link href={`/dashboard/patients/${patient.id}`}>
+                            <Button variant="dark" className="px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest">Node Analysis</Button>
                         </Link>
-                        <Link href={`/dashboard/reports?u=${patient.id}`}>
-                            <Button variant="dark" size="sm">
-                                Report <ExternalLink size={14} className="ml-2" />
-                            </Button>
-                        </Link>
+                        <div className="flex items-center space-x-1">
+                            <Link href={`/dashboard/trends?u=${patient.id}`} title="Trends">
+                                <button className="p-3 bg-slate-50 hover:bg-teal-50 text-slate-400 hover:text-teal-600 rounded-xl transition-all"><TrendingUp size={18} /></button>
+                            </Link>
+                            <Link href={`/dashboard/reports?u=${patient.id}`} title="Reports">
+                                <button className="p-3 bg-slate-50 hover:bg-cyan-50 text-slate-400 hover:text-cyan-600 rounded-xl transition-all"><FileText size={18} /></button>
+                            </Link>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -225,46 +231,56 @@ function PatientMonitorCard({ patient }: { patient: any }) {
     );
 }
 
-function CaregiverCard({ assignment }: { assignment: any }) {
+function CaregiverMatrixCard({ assignment }: { assignment: any }) {
     const caregiver = assignment.caregiver;
     if (!caregiver) return null;
 
     return (
-        <Card className="p-0 overflow-hidden border-slate-100 shadow-premium" hover={false}>
-            <div className="flex flex-col md:flex-row md:h-40">
+        <Card className="p-0 overflow-hidden border-slate-100 shadow-premium transition-all hover:shadow-glow-teal group" hover={false}>
+            <div className="flex flex-col md:flex-row min-h-[140px]">
                 <div className="w-full md:w-2 bg-teal-500" />
-                <div className="flex-1 p-8 flex flex-col md:flex-row items-center justify-between gap-8">
+                <div className="flex-1 p-8 flex flex-col md:flex-row items-center justify-between gap-10">
                     <div className="flex items-center space-x-6">
-                        <div className="w-16 h-16 bg-teal-50 rounded-2xl flex items-center justify-center text-teal-600">
+                        <div className="w-16 h-16 bg-teal-50 text-teal-600 rounded-[20px] flex items-center justify-center shadow-lg group-hover:rotate-6 transition-transform">
                             <Stethoscope size={28} />
                         </div>
                         <div>
-                            <h3 className="text-3xl font-black text-slate-900 tracking-tighter">{caregiver.full_name}</h3>
-                            <div className="flex items-center space-x-4 mt-1">
-                                <span className="text-[10px] font-black uppercase text-teal-600 tracking-widest border border-teal-100 px-2 py-0.5 rounded-full">
-                                    {assignment.role || 'Primary Care'}
+                            <h3 className="text-2xl font-black text-slate-900 tracking-tighter mb-1">{caregiver.full_name}</h3>
+                            <div className="flex items-center space-x-4">
+                                <span className="text-[10px] font-black text-teal-600 uppercase tracking-widest bg-teal-50 px-3 py-1 rounded-full border border-teal-100">
+                                    {assignment.assignment_notes || 'Clinical Lead'}
                                 </span>
-                                <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center">
-                                    <ShieldCheck size={12} className="mr-1" /> Active Authorization
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center italic">
+                                    <ShieldCheck size={12} className="mr-1 text-emerald-500" /> Authorization Active
                                 </span>
                             </div>
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-8">
-                        <div>
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Contact Email</p>
-                            <p className="font-bold text-slate-900">{caregiver.email}</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                        <div className="flex items-center space-x-4">
+                            <div className="p-2 bg-slate-50 rounded-lg text-slate-400"><Mail size={16} /></div>
+                            <div>
+                                <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Contact Node</div>
+                                <div className="text-xs font-bold text-slate-900">{caregiver.email}</div>
+                            </div>
                         </div>
-                        <div>
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Linked Since</p>
-                            <p className="font-bold text-slate-900">{new Date(assignment.created_at).toLocaleDateString()}</p>
+                        <div className="flex items-center space-x-4">
+                            <div className="p-2 bg-slate-50 rounded-lg text-slate-400"><Clock size={16} /></div>
+                            <div>
+                                <div className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Authorization Sync</div>
+                                <div className="text-xs font-bold text-slate-900">{new Date(assignment.created_at).toLocaleDateString()}</div>
+                            </div>
                         </div>
                     </div>
 
                     <div className="flex space-x-3">
-                        <Button variant="outline" size="sm" onClick={() => (window as any).location.href = `mailto:${caregiver.email}`}>Message</Button>
-                        <Button variant="dark" size="sm">View Permissions</Button>
+                        <button
+                            onClick={() => (window as any).location.href = `mailto:${caregiver.email}`}
+                            className="px-8 py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-slate-900/10"
+                        >
+                            Establish Comms
+                        </button>
                     </div>
                 </div>
             </div>

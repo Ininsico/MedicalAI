@@ -49,12 +49,17 @@ export default function CheckInPage() {
         notes: ''
     });
 
+    const [role, setRole] = useState<'patient' | 'caregiver'>('patient');
+
     useEffect(() => {
         async function fetchLastEntry() {
             try {
                 const userStr = localStorage.getItem('user');
                 if (!userStr) return;
                 const user = JSON.parse(userStr);
+                setRole(user.role);
+
+                if (user.role === 'caregiver') return;
 
                 const logs = await api.patient.getLogs(user.id);
 
@@ -161,6 +166,26 @@ export default function CheckInPage() {
             setSubmitting(false);
         }
     };
+
+    if (role === 'caregiver') {
+        return (
+            <div className="flex flex-col items-center justify-center h-[70vh] text-center px-6">
+                <div className="p-10 rounded-full mb-10 bg-slate-100 shadow-xl shadow-slate-200/20">
+                    <Stethoscope size={100} className="text-slate-400" />
+                </div>
+                <h2 className="text-4xl font-black text-slate-900 mb-6 tracking-tighter uppercase">Clinical Access Restricted</h2>
+                <p className="text-slate-500 font-medium text-lg max-w-md mx-auto leading-relaxed italic">
+                    Medical providers are authorized for data analysis only. Direct physiological logging must be executed by the primary patient node.
+                </p>
+                <Button
+                    onClick={() => router.push('/dashboard')}
+                    className="mt-12 px-12 py-6 rounded-2xl"
+                >
+                    Return to Matrix <ArrowRight size={20} className="ml-3" />
+                </Button>
+            </div>
+        );
+    }
 
     if (success || alreadyDone) {
         return (

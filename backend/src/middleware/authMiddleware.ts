@@ -15,8 +15,11 @@ declare global {
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this';
 
+
 /**
- * Authentication middleware
+ * Authentication middleware.
+ * Verifies the JWT token from the Authorization header.
+ * Attaches the decoded payload to the Request object as `user`.
  */
 export const authenticateToken = async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -36,7 +39,8 @@ export const authenticateToken = async (req: Request, res: Response, next: NextF
 };
 
 /**
- * Authorization middleware for Admin
+ * Authorization middleware for Admin role.
+ * Ensures the authenticated user has the 'admin' role in the database.
  */
 export const authorizeAdmin = async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -56,7 +60,8 @@ export const authorizeAdmin = async (req: Request, res: Response, next: NextFunc
 };
 
 /**
- * Authorization middleware for Caregiver
+ * Authorization middleware for Caregiver role.
+ * Ensures the authenticated user has the 'caregiver' or 'admin' role.
  */
 export const authorizeCaregiver = async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -76,7 +81,8 @@ export const authorizeCaregiver = async (req: Request, res: Response, next: Next
 };
 
 /**
- * Check if caregiver is assigned to patient
+ * Check if the authenticated caregiver is assigned to the specified patient.
+ * Admins bypass this check.
  */
 export const checkCaregiverAccess = async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -85,10 +91,9 @@ export const checkCaregiverAccess = async (req: Request, res: Response, next: Ne
         const targetPatientId = patientId || bodyPatientId;
 
         if (req.user.role === 'admin') {
-            return next(); // Admin has full access
+            return next();
         }
 
-        // For caregiver, check assignment
         const { data: assignment, error } = await supabaseAdmin
             .from('caregiver_assignments')
             .select('*')
