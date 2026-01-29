@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
     LayoutDashboard,
     ClipboardCheck,
@@ -16,14 +16,18 @@ import {
     ShieldAlert
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { supabase } from '@/lib/supabase';
 import { motion } from 'framer-motion';
 
 const Sidebar = () => {
     const pathname = usePathname();
+    const router = useRouter();
 
-    const handleLogout = async () => {
-        await supabase.auth.signOut();
+    const handleLogout = () => {
+        // Clear all session data
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+
+        // Redirect to login
         window.location.href = '/login';
     };
 

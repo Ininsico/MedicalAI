@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { supabase } from '@/lib/supabase';
+import { api } from '@/lib/api';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
@@ -20,29 +20,25 @@ export default function LoginPage() {
         setLoading(true);
         setError(null);
 
-        // DEMO MODE: Try normal login first
-        const { data, error } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-        });
+        try {
+            const response = await api.auth.login({ email, password });
 
-        if (error) {
-            console.error("Login Error:", error);
+            // Store auth data
+            localStorage.setItem('token', response.token);
+            localStorage.setItem('user', JSON.stringify(response.user));
 
-            // FOR DEMO PURPOSES ONLY:
-            // If the user uses the specific demo credentials, we allow them through even if Auth fails (e.g. if user doesn't exist yet)
-            // This is strictly to ensure the reviewer can see the app working.
-            if ((email === 'admin@demo.com' || email === 'caregiver@demo.com') && password === 'demo123') {
-                // Manually redirect
+            if (response.user.role === 'admin') {
+                window.location.href = '/admin';
+            } else {
                 window.location.href = '/dashboard';
-                return;
             }
+        } catch (err: any) {
+            console.error("Login Error:", err);
 
-            setError(error.message);
-        } else {
-            window.location.href = '/dashboard';
+            setError(err.message || 'Login failed');
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
     };
 
     return (
@@ -99,31 +95,6 @@ export default function LoginPage() {
                                 </div>
                             </div>
 
-                            {/* DEMO CREDENTIALS SECTION */}
-                            <div className="grid grid-cols-2 gap-4">
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setEmail('admin@demo.com');
-                                        setPassword('demo123');
-                                    }}
-                                    className="p-3 rounded-xl bg-slate-100 text-xs font-bold text-slate-600 hover:bg-slate-200 transition-colors text-center"
-                                >
-                                    Login as Demo ADMIN
-                                    <div className="text-[10px] font-normal text-slate-400 mt-1">admin@demo.com / demo123</div>
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setEmail('caregiver@demo.com');
-                                        setPassword('demo123');
-                                    }}
-                                    className="p-3 rounded-xl bg-teal-50 text-xs font-bold text-teal-700 hover:bg-teal-100 transition-colors text-center"
-                                >
-                                    Login as Demo CAREGIVER
-                                    <div className="text-[10px] font-normal text-teal-600/70 mt-1">caregiver@demo.com / demo123</div>
-                                </button>
-                            </div>
 
                             {error && (
                                 <motion.div

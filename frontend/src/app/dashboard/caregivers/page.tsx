@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { api } from '@/lib/api';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import Link from 'next/link';
@@ -13,49 +13,58 @@ import {
     ShieldCheck,
     AlertCircle,
     Stethoscope,
-    ChevronRight
+    ChevronRight,
+    LogOut
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export default function CaregiversPage() {
-    const [patients, setPatients] = useState<any[]>([]);
+    const [data, setData] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [role, setRole] = useState<'patient' | 'caregiver' | 'admin'>('patient');
 
     useEffect(() => {
-        async function fetchPatients() {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return;
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        const userRole = user.role || 'patient';
+        setRole(userRole);
 
-            const { data: links } = await supabase
-                .from('caregiver_patient_links')
-                .select(`
-          patient_id,
-          permissions,
-          patient:profiles!patient_id(full_name, id)
-        `)
-                .eq('caregiver_id', user.id);
+        async function fetchData() {
+            try {
+                if (userRole === 'caregiver') {
+                    const res = await api.caregiver.getDashboard();
+                    if (res && res.assignments) {
+                        const patientsWithStatus = res.assignments.map((assignment: any) => {
+                            const patient = assignment.patient;
+                            const lastLog = patient.recent_logs && patient.recent_logs.length > 0
+                                ? patient.recent_logs[0]
+                                : null;
 
-            if (links) {
-                // Fetch latest log for each patient
-                const patientsWithStatus = await Promise.all(links.map(async (link: any) => {
-                    const { data: log } = await supabase
-                        .from('symptom_logs')
-                        .select('*')
-                        .eq('user_id', link.patient.id)
-                        .order('logged_at', { ascending: false })
-                        .limit(1);
+                            const mappedLog = lastLog ? {
+                                ...lastLog,
+                                logged_at: lastLog.date,
+                                tremor: lastLog.tremor_severity || 0
+                            } : null;
 
-                    return {
-                        ...link.patient,
-                        permissions: link.permissions,
-                        lastLog: log?.[0] || null
-                    };
-                }));
-                setPatients(patientsWithStatus);
+                            return {
+                                ...patient,
+                                permissions: 'Full Access',
+                                lastLog: mappedLog
+                            };
+                        });
+                        setData(patientsWithStatus);
+                    }
+                } else {
+                    // Patient View
+                    const res = await api.patient.getCaregivers(user.id);
+                    setData(res || []);
+                }
+            } catch (error) {
+                console.error("Failed to fetch network data:", error);
+            } finally {
+                setLoading(false);
             }
-            setLoading(false);
         }
-        fetchPatients();
+        fetchData();
     }, []);
 
     return (
@@ -64,38 +73,61 @@ export default function CaregiversPage() {
                 <div>
                     <div className="flex items-center space-x-3 text-teal-600 font-black text-xs uppercase tracking-[0.3em] mb-3">
                         <Users size={14} />
-                        <span>Care Network Management</span>
+                        <span>{role === 'patient' ? 'Your Clinical Network' : 'Care Network Management'}</span>
                     </div>
                     <h1 className="text-5xl font-black text-slate-900 tracking-tighter">
-                        Patient <span className="text-slate-400 italic font-serif font-light">Continuum</span>
+                        {role === 'patient' ? 'Care' : 'Patient'} <span className="text-slate-400 italic font-serif font-light">{role === 'patient' ? 'Partners' : 'Continuum'}</span>
                     </h1>
                 </div>
-                <Button variant="dark" className="rounded-2xl shadow-glow">
-                    <UserPlus size={20} className="mr-2" /> Provision New Link
-                </Button>
+                <div className="flex items-center space-x-4">
+                    {role === 'caregiver' && (
+                        <Button variant="dark" className="rounded-2xl shadow-glow">
+                            <UserPlus size={20} className="mr-2" /> Provision New Link
+                        </Button>
+                    )}
+                    <button
+                        onClick={() => {
+                            localStorage.removeItem('token');
+                            localStorage.removeItem('user');
+                            window.location.href = '/login';
+                        }}
+                        className="p-4 bg-white/50 border border-white text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-2xl shadow-premium backdrop-blur-xl transition-all group"
+                        title="End Session"
+                    >
+                        <LogOut size={20} className="group-hover:rotate-12 transition-transform" />
+                    </button>
+                </div>
             </header>
 
             {loading ? (
                 <div className="flex flex-col items-center justify-center h-[40vh] space-y-4">
                     <div className="w-10 h-10 border-4 border-teal-500 border-t-transparent rounded-full animate-spin" />
-                    <span className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">Synchronizing Peer Data</span>
+                    <span className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">Synchronizing Matrix</span>
                 </div>
-            ) : patients.length === 0 ? (
+            ) : data.length === 0 ? (
                 <Card className="p-20 text-center border-dashed border-2 bg-transparent" hover={false}>
                     <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-6 text-slate-400">
                         <Users size={32} />
                     </div>
-                    <h3 className="text-2xl font-black text-slate-900 mb-2">No Active Patient Links</h3>
+                    <h3 className="text-2xl font-black text-slate-900 mb-2">No Active {role === 'patient' ? 'Caregivers' : 'Patient Links'}</h3>
                     <p className="text-slate-500 max-w-sm mx-auto mb-8">
-                        Connect with a patient using their unique Medical ID to begin monitoring their clinical stream.
+                        {role === 'patient'
+                            ? 'Your clinical network is currently isolated. Ask your doctor to link your profile for remote monitoring.'
+                            : 'Connect with a patient using their unique Medical ID to begin monitoring their clinical stream.'}
                     </p>
-                    <Button variant="outline">Learn about Caregiver Roles</Button>
+                    {role === 'caregiver' && <Button variant="outline">Learn about Caregiver Roles</Button>}
                 </Card>
             ) : (
                 <div className="grid grid-cols-1 gap-8">
-                    {patients.map((patient) => (
-                        <PatientMonitorCard key={patient.id} patient={patient} />
-                    ))}
+                    {role === 'caregiver' ? (
+                        data.map((patient) => (
+                            <PatientMonitorCard key={patient.id} patient={patient} />
+                        ))
+                    ) : (
+                        data.map((assignment) => (
+                            <CaregiverCard key={assignment.id} assignment={assignment} />
+                        ))
+                    )}
                 </div>
             )}
 
@@ -186,6 +218,53 @@ function PatientMonitorCard({ patient }: { patient: any }) {
                                 Report <ExternalLink size={14} className="ml-2" />
                             </Button>
                         </Link>
+                    </div>
+                </div>
+            </div>
+        </Card>
+    );
+}
+
+function CaregiverCard({ assignment }: { assignment: any }) {
+    const caregiver = assignment.caregiver;
+    if (!caregiver) return null;
+
+    return (
+        <Card className="p-0 overflow-hidden border-slate-100 shadow-premium" hover={false}>
+            <div className="flex flex-col md:flex-row md:h-40">
+                <div className="w-full md:w-2 bg-teal-500" />
+                <div className="flex-1 p-8 flex flex-col md:flex-row items-center justify-between gap-8">
+                    <div className="flex items-center space-x-6">
+                        <div className="w-16 h-16 bg-teal-50 rounded-2xl flex items-center justify-center text-teal-600">
+                            <Stethoscope size={28} />
+                        </div>
+                        <div>
+                            <h3 className="text-3xl font-black text-slate-900 tracking-tighter">{caregiver.full_name}</h3>
+                            <div className="flex items-center space-x-4 mt-1">
+                                <span className="text-[10px] font-black uppercase text-teal-600 tracking-widest border border-teal-100 px-2 py-0.5 rounded-full">
+                                    {assignment.role || 'Primary Care'}
+                                </span>
+                                <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest flex items-center">
+                                    <ShieldCheck size={12} className="mr-1" /> Active Authorization
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-8">
+                        <div>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Contact Email</p>
+                            <p className="font-bold text-slate-900">{caregiver.email}</p>
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Linked Since</p>
+                            <p className="font-bold text-slate-900">{new Date(assignment.created_at).toLocaleDateString()}</p>
+                        </div>
+                    </div>
+
+                    <div className="flex space-x-3">
+                        <Button variant="outline" size="sm" onClick={() => (window as any).location.href = `mailto:${caregiver.email}`}>Message</Button>
+                        <Button variant="dark" size="sm">View Permissions</Button>
                     </div>
                 </div>
             </div>

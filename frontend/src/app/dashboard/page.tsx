@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { api } from '@/lib/api';
 import { Button } from '@/components/ui/Button';
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card';
 import Link from 'next/link';
@@ -15,7 +15,8 @@ import {
     Calendar,
     Clock,
     ArrowRight,
-    ShieldCheck
+    ShieldCheck,
+    LogOut
 } from 'lucide-react';
 import { detectUnusualChanges } from '@/lib/analysis';
 import { cn } from '@/lib/utils';
@@ -30,30 +31,32 @@ export default function DashboardPage() {
 
     useEffect(() => {
         async function getDashboardData() {
-            const { data: { user } } = await supabase.auth.getUser();
-            setUser(user);
+            try {
+                const userStr = localStorage.getItem('user');
+                if (!userStr) {
+                    window.location.href = '/login';
+                    return;
+                }
+                const userData = JSON.parse(userStr);
+                setUser(userData);
 
-            if (user) {
-                const { data: logs } = await supabase
-                    .from('symptom_logs')
-                    .select('*')
-                    .eq('user_id', user.id)
-                    .order('logged_at', { ascending: false })
-                    .limit(10);
+                const logs = await api.patient.getLogs(userData.id);
 
                 if (logs && logs.length > 0) {
                     setLastCheckIn(logs[0]);
-                    // @ts-ignore
                     const detected = detectUnusualChanges(logs);
                     if (detected) setInsights(detected);
 
-                    const avgTremor = logs.reduce((acc: number, log: any) => acc + log.tremor, 0) / logs.length;
-                    const avgStiffness = logs.reduce((acc: number, log: any) => acc + log.stiffness, 0) / logs.length;
-                    const avgSleep = logs.reduce((acc: number, log: any) => acc + log.sleep, 0) / logs.length;
+                    const avgTremor = logs.reduce((acc: number, log: any) => acc + (log.tremor_severity || 0), 0) / logs.length;
+                    const avgStiffness = logs.reduce((acc: number, log: any) => acc + (log.stiffness_severity || 0), 0) / logs.length;
+                    const avgSleep = logs.reduce((acc: number, log: any) => acc + (log.sleep_hours || 0), 0) / logs.length;
                     setAverages({ tremor: avgTremor.toFixed(1), stiffness: avgStiffness.toFixed(1), sleep: avgSleep.toFixed(1) });
                 }
+            } catch (error) {
+                console.error('Dashboard data error:', error);
+            } finally {
+                setLoading(false);
             }
-            setLoading(false);
         }
 
         getDashboardData();
@@ -66,7 +69,10 @@ export default function DashboardPage() {
         </div>
     );
 
-    const isToday = lastCheckIn && new Date(lastCheckIn.logged_at).toDateString() === new Date().toDateString();
+    const isToday = lastCheckIn && (
+        new Date(lastCheckIn.date).toDateString() === new Date().toDateString() ||
+        new Date(lastCheckIn.created_at).toDateString() === new Date().toDateString()
+    );
 
     const getTimeGreeting = () => {
         const hour = new Date().getHours();
@@ -75,7 +81,13 @@ export default function DashboardPage() {
         return "Good Evening";
     };
 
-    const firstName = user?.user_metadata?.full_name?.split(' ')[0] || 'Arslan';
+    const firstName = user?.full_name?.split(' ')[0] || 'User';
+
+    const handleLogout = () => {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+    };
 
     return (
         <div className="space-y-12 pb-24">
@@ -91,15 +103,25 @@ export default function DashboardPage() {
                     </h1>
                 </div>
 
-                <div className="flex items-center space-x-4 bg-white/50 border border-white p-2 rounded-2xl shadow-premium backdrop-blur-xl">
-                    <div className="flex items-center px-4 py-2 bg-teal-50 rounded-xl text-teal-700 font-bold text-sm">
-                        <Calendar size={16} className="mr-2" />
-                        {new Date().toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}
+                <div className="flex items-center space-x-6">
+                    <div className="flex items-center space-x-4 bg-white/50 border border-white p-2 rounded-2xl shadow-premium backdrop-blur-xl">
+                        <div className="flex items-center px-4 py-2 bg-teal-50 rounded-xl text-teal-700 font-bold text-sm">
+                            <Calendar size={16} className="mr-2" />
+                            {new Date().toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}
+                        </div>
+                        <div className="hidden sm:flex items-center px-4 py-2 text-slate-500 font-bold text-sm border-l border-slate-100 italic font-serif">
+                            <Clock size={16} className="mr-2" />
+                            System Active
+                        </div>
                     </div>
-                    <div className="flex items-center px-4 py-2 text-slate-500 font-bold text-sm border-l border-slate-100 italic font-serif">
-                        <Clock size={16} className="mr-2" />
-                        System Active
-                    </div>
+
+                    <button
+                        onClick={handleLogout}
+                        className="p-4 bg-white/50 border border-white text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-2xl shadow-premium backdrop-blur-xl transition-all group"
+                        title="End Session"
+                    >
+                        <LogOut size={20} className="group-hover:rotate-12 transition-transform" />
+                    </button>
                 </div>
             </header>
 

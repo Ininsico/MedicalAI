@@ -1,9 +1,12 @@
+
 import express from 'express';
-import { demoLogin } from '../controllers/authController';
+import { register, login, getProfile } from '../controllers/authController';
+import { authenticateToken, authorizeAdmin } from '../middleware/authMiddleware';
 
 const router = express.Router();
 
-// DEMO MODE: Login without email verification
-router.post('/demo-login', demoLogin);
+router.post('/register', register);
+router.post('/login', login);
+router.get('/profile', authenticateToken, getProfile);
 
 export default router;

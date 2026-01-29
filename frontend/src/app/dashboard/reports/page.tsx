@@ -1,10 +1,10 @@
 "use client";
 
 import React, { useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { api } from '@/lib/api';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
-import { FileText, Download, Calendar, Activity, CheckCircle2, AlertCircle, ShieldCheck } from 'lucide-react';
+import { FileText, Download, Calendar, Activity, CheckCircle2, AlertCircle, ShieldCheck, LogOut } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -15,30 +15,15 @@ export default function ReportsPage() {
     const generatePDF = async () => {
         setLoading(true);
         try {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) {
+            const userStr = localStorage.getItem('user');
+            if (!userStr) {
                 alert("Authentication error. Please log in again.");
                 setLoading(false);
                 return;
             }
+            const user = JSON.parse(userStr);
 
-            // Fetch logs for report with timeout
-            const timeoutPromise = new Promise((_, reject) =>
-                setTimeout(() => reject(new Error('Request timeout')), 10000)
-            );
-
-            const fetchPromise = supabase
-                .from('symptom_logs')
-                .select('*')
-                .eq('user_id', user.id)
-                .order('logged_at', { ascending: false })
-                .limit(30);
-
-            const { data: logs, error } = await Promise.race([fetchPromise, timeoutPromise]) as any;
-
-            if (error) {
-                throw new Error(error.message);
-            }
+            const logs = await api.patient.getLogs(user.id);
 
             if (!logs || logs.length === 0) {
                 alert("No clinical data available for report generation.");
@@ -65,18 +50,18 @@ export default function ReportsPage() {
             doc.setTextColor(0);
             doc.text("Executive Summary", 14, 50);
             doc.setFontSize(10);
-            doc.text(`This report covers the last ${logs.length} logged intervals. Current tremor levels average ${(logs.reduce((a: any, b: any) => a + b.tremor, 0) / logs.length).toFixed(1)}/10.`, 14, 58);
+            doc.text(`This report covers the last ${logs.length} logged intervals. Current tremor levels average ${(logs.reduce((a: any, b: any) => a + (b.tremor_severity || b.tremor || 0), 0) / logs.length).toFixed(1)}/10.`, 14, 58);
 
             // Table
             autoTable(doc, {
                 startY: 70,
                 head: [['Date', 'Tremor', 'Stiffness', 'Sleep', 'Meds']],
                 body: logs.map((log: any) => [
-                    new Date(log.logged_at).toLocaleDateString(),
-                    log.tremor,
-                    log.stiffness,
-                    log.sleep,
-                    log.medication_adherence
+                    new Date(log.date || log.logged_at).toLocaleDateString(),
+                    log.tremor_severity || log.tremor || 0,
+                    log.stiffness_severity || log.stiffness || 0,
+                    log.sleep_hours || log.sleep || 0,
+                    log.medication_taken ? 'Yes' : 'No'
                 ]),
                 headStyles: { fillColor: [20, 184, 166] },
                 alternateRowStyles: { fillColor: [248, 250, 252] },
@@ -108,14 +93,30 @@ export default function ReportsPage() {
 
     return (
         <div className="space-y-12 pb-24">
-            <header>
-                <div className="flex items-center space-x-3 text-teal-600 font-black text-xs uppercase tracking-[0.3em] mb-3">
-                    <FileText size={14} />
-                    <span>Clinical Export Module</span>
+            <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                <div>
+                    <div className="flex items-center space-x-3 text-teal-600 font-black text-xs uppercase tracking-[0.3em] mb-3">
+                        <FileText size={14} />
+                        <span>Clinical Export Module</span>
+                    </div>
+                    <h1 className="text-5xl font-black text-slate-900 tracking-tighter">
+                        Analytical <span className="text-slate-400 italic font-serif font-light">Reports</span>
+                    </h1>
                 </div>
-                <h1 className="text-5xl font-black text-slate-900 tracking-tighter">
-                    Analytical <span className="text-slate-400 italic font-serif font-light">Reports</span>
-                </h1>
+
+                <div className="flex items-center space-x-4">
+                    <button
+                        onClick={() => {
+                            localStorage.removeItem('token');
+                            localStorage.removeItem('user');
+                            window.location.href = '/login';
+                        }}
+                        className="p-4 bg-white/50 border border-white text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-2xl shadow-premium backdrop-blur-xl transition-all group"
+                        title="End Session"
+                    >
+                        <LogOut size={20} className="group-hover:rotate-12 transition-transform" />
+                    </button>
+                </div>
             </header>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
