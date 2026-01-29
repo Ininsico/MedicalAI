@@ -134,7 +134,7 @@ function TrendsContent() {
             {loading ? (
                 <div className="flex flex-col items-center justify-center h-[50vh] space-y-4">
                     <div className="w-12 h-12 border-4 border-teal-500 border-t-transparent rounded-full animate-spin" />
-                    <span className="text-slate-400 font-bold uppercase tracking-widest text-xs">Computing Neural Coefficients</span>
+                    <span className="text-slate-400 font-bold uppercase tracking-widest text-xs">Loading Data...</span>
                 </div>
             ) : (
                 <div className="space-y-12">

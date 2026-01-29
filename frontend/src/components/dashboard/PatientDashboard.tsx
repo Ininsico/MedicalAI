@@ -1,40 +1,55 @@
-"use client";
-
 import React from 'react';
 import Link from 'next/link';
 import {
     CheckCircle2,
     AlertCircle,
-    Sparkles,
     TrendingDown,
     TrendingUp,
     Activity,
     ArrowRight,
-    ShieldCheck
+    ShieldCheck,
+    Pill,
+    Smile,
+    Move
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
+import { AreaChart, Area, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid } from 'recharts';
 
 interface PatientDashboardProps {
     lastCheckIn: any;
     insights: string[];
     averages: any;
+    logs: any[];
 }
 
-export default function PatientDashboard({ lastCheckIn, insights, averages }: PatientDashboardProps) {
+export default function PatientDashboard({ lastCheckIn, insights, averages, logs }: PatientDashboardProps) {
     const isToday = lastCheckIn && (
         new Date(lastCheckIn.date).toDateString() === new Date().toDateString() ||
         new Date(lastCheckIn.created_at).toDateString() === new Date().toDateString()
     );
 
+    // Calculate extra metrics
+    const medicationAdherence = logs?.length > 0
+        ? Math.round((logs.filter(l => l.medication_taken).length / logs.length) * 100)
+        : 0;
+
+    // Simple mood mapping: "Good" -> 10, "Ok" -> 5, "Bad" -> 2 (Mock logic for demo)
+    const moodScore = logs?.length > 0
+        ? Math.round(logs.reduce((acc, log) => acc + (log.mood === 'Good' ? 10 : log.mood === 'Ok' ? 5 : 2), 0) / logs.length)
+        : 0;
+
+    // Mobility mock (inverse of stiffness)
+    const mobilityScore = averages?.stiffness ? (10 - parseFloat(averages.stiffness)).toFixed(1) : '0.0';
+
     return (
         <div className="space-y-12">
             {/* Primary Actions / Insights */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 gap-8">
                 {/* Status Card */}
-                <Card className="lg:col-span-1 relative overflow-hidden" variant={isToday ? 'white' : 'glass'}>
+                <Card className="relative overflow-hidden" variant={isToday ? 'white' : 'glass'}>
                     <div className="absolute top-0 right-0 p-4 opacity-5">
                         <ShieldCheck size={120} />
                     </div>
@@ -66,79 +81,142 @@ export default function PatientDashboard({ lastCheckIn, insights, averages }: Pa
                         )}
                     </div>
                 </Card>
+            </div>
 
-                {/* AI Insight Card */}
-                <Card className="lg:col-span-2 bg-slate-900 text-white border-none shadow-2xl relative overflow-hidden" hover={false}>
-                    <div className="absolute top-[-20%] right-[-10%] w-64 h-64 bg-teal-500 opacity-20 blur-[100px] rounded-full" />
-                    <div className="absolute bottom-[-20%] left-0 w-48 h-48 bg-cyan-500 opacity-10 blur-[80px] rounded-full" />
-
-                    <div className="relative z-10 h-full flex flex-col justify-between">
-                        <div className="flex items-center justify-between mb-8">
-                            <div className="flex items-center space-x-3 bg-white/10 px-4 py-2 rounded-full border border-white/10 backdrop-blur-md">
-                                <Sparkles size={18} className="text-teal-400" />
-                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-teal-400">Analysis Engine v4.0</span>
-                            </div>
-                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Real-time Stream AI</span>
+            {/* Analytics Graph Section */}
+            <Card className="p-8 border-slate-100 shadow-sm">
+                <div className="flex items-center justify-between mb-8">
+                    <div>
+                        <h3 className="text-2xl font-black text-slate-900 tracking-tight">Tremor & Stiffness Analytics</h3>
+                        <p className="text-slate-500 font-medium">visualization of neural motor symptoms over the last 30 days.</p>
+                    </div>
+                    <div className="flex items-center space-x-4">
+                        <div className="flex items-center text-xs font-bold text-slate-500 uppercase tracking-widest">
+                            <span className="w-3 h-3 rounded-full bg-teal-500 mr-2" /> Tremor
                         </div>
-
-                        <div className="space-y-4">
-                            <h2 className="text-3xl font-black tracking-tight leading-none mb-4">Neural Activity Insight</h2>
-                            <p className="text-slate-400 text-lg font-medium leading-relaxed max-w-2xl">
-                                {insights.length > 0
-                                    ? insights[0]
-                                    : lastCheckIn
-                                        ? "Bio-metrics currently stabilization. Your physiological baseline is showing high resilience this cycle."
-                                        : "Awaiting initial data stream to commence pattern recognition protocols."}
-                            </p>
-                        </div>
-
-                        <div className="mt-8 flex gap-4 pt-8 border-t border-white/5">
-                            <div className="flex flex-col">
-                                <span className="text-[10px] font-black uppercase text-slate-500 mb-1">Confidence Score</span>
-                                <div className="flex items-center space-x-1">
-                                    {[1, 2, 3, 4].map(i => <div key={i} className="w-4 h-1 bg-teal-500 rounded-full" />)}
-                                    <div className="w-4 h-1 bg-white/20 rounded-full" />
-                                </div>
-                            </div>
-                            <div className="flex flex-col border-l border-white/5 pl-4">
-                                <span className="text-[10px] font-black uppercase text-slate-500 mb-1">Status</span>
-                                <span className="text-xs font-bold text-teal-400 uppercase">Monitoring Active</span>
-                            </div>
+                        <div className="flex items-center text-xs font-bold text-slate-500 uppercase tracking-widest">
+                            <span className="w-3 h-3 rounded-full bg-indigo-500 mr-2" /> Stiffness
                         </div>
                     </div>
-                </Card>
-            </div>
+                </div>
+
+                <div className="h-[400px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={logs ? [...logs].reverse() : []} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                            <defs>
+                                <linearGradient id="colorTremor" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#14b8a6" stopOpacity={0.3} />
+                                    <stop offset="95%" stopColor="#14b8a6" stopOpacity={0} />
+                                </linearGradient>
+                                <linearGradient id="colorStiffness" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
+                                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                                </linearGradient>
+                            </defs>
+                            <XAxis
+                                dataKey="date"
+                                axisLine={false}
+                                tickLine={false}
+                                tick={{ fill: '#94a3b8', fontSize: 12 }}
+                                tickFormatter={(str) => new Date(str).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                            />
+                            <YAxis
+                                axisLine={false}
+                                tickLine={false}
+                                tick={{ fill: '#94a3b8', fontSize: 12 }}
+                            />
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                            <Tooltip
+                                contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '12px', color: '#fff', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}
+                                itemStyle={{ color: '#fff' }}
+                                labelStyle={{ color: '#94a3b8', marginBottom: '0.5rem' }}
+                            />
+                            <Area type="monotone" dataKey="tremor_severity" stroke="#14b8a6" strokeWidth={3} fillOpacity={1} fill="url(#colorTremor)" name="Tremor" />
+                            <Area type="monotone" dataKey="stiffness_severity" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#colorStiffness)" name="Stiffness" />
+                        </AreaChart>
+                    </ResponsiveContainer>
+                </div>
+            </Card>
 
             {/* Averages Section */}
             <div>
                 <h3 className="text-2xl font-black text-slate-900 mb-8 tracking-tighter">Diagnostic Indicators <span className="text-slate-400 font-serif font-light text-xl italic">(7-Day Aggregate)</span></h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-                    <DiagnosticCard label="Tremor Intensity" value={averages?.tremor || '0.0'} trend="down" color="teal" />
-                    <DiagnosticCard label="Muscle Rigidity" value={averages?.stiffness || '0.0'} trend="up" color="rose" />
-                    <DiagnosticCard label="Neural Rest (Sleep)" value={averages?.sleep || '0.0'} trend="up" color="cyan" />
+                    <DiagnosticCard
+                        label="Tremor Intensity"
+                        value={averages?.tremor || '0.0'}
+                        trend="down"
+                        color="teal"
+                        icon={<Activity size={20} className="text-teal-600" />}
+                    />
+                    <DiagnosticCard
+                        label="Muscle Rigidity"
+                        value={averages?.stiffness || '0.0'}
+                        trend="up"
+                        color="rose"
+                        icon={<Activity size={20} className="text-rose-600" />}
+                    />
+                    <DiagnosticCard
+                        label="Neural Rest (Sleep)"
+                        value={averages?.sleep || '0.0'}
+                        trend="up"
+                        color="cyan"
+                        icon={<Activity size={20} className="text-cyan-600" />}
+                    />
+                    <DiagnosticCard
+                        label="Medication Adherence"
+                        value={`${medicationAdherence}%`}
+                        trend={medicationAdherence > 80 ? "up" : "down"}
+                        color="emerald"
+                        icon={<Pill size={20} className="text-emerald-600" />}
+                        isPercent
+                    />
+                    <DiagnosticCard
+                        label="Mood Index"
+                        value={`${moodScore}/10`}
+                        trend={moodScore > 5 ? "up" : "down"}
+                        color="indigo"
+                        icon={<Smile size={20} className="text-indigo-600" />}
+                        isPercent={false}
+                    />
+                    <DiagnosticCard
+                        label="Daily Mobility"
+                        value={`${mobilityScore}`}
+                        trend="up"
+                        color="amber"
+                        icon={<Move size={20} className="text-amber-600" />}
+                    />
                 </div>
             </div>
         </div>
     );
 }
 
-function DiagnosticCard({ label, value, trend, color }: { label: string, value: string, trend: 'up' | 'down', color: 'teal' | 'rose' | 'cyan' }) {
-    const isPositive = (color === 'teal' || color === 'rose') ? trend === 'down' : trend === 'up';
+function DiagnosticCard({ label, value, trend, color, icon, isPercent = false }: any) {
+    const isPositive = (color === 'emerald' || color === 'teal' || color === 'indigo' || color === 'amber' || color === 'cyan') ? trend === 'up' : trend === 'down';
+
+    // Parse value for progress bar (handling % and /10 strings)
+    let progressVal = 0;
+    if (typeof value === 'string' && value.includes('%')) {
+        progressVal = parseFloat(value); // 0-100
+    } else if (typeof value === 'string' && value.includes('/')) {
+        progressVal = (parseFloat(value.split('/')[0]) / 10) * 100;
+    } else {
+        progressVal = (parseFloat(value) / 10) * 100;
+    }
 
     return (
         <Card className="border border-slate-50/50">
             <div className="flex justify-between items-start mb-6">
                 <span className="p-3 bg-slate-50 rounded-xl">
-                    <Activity size={20} className={cn(
-                        color === 'teal' ? "text-teal-600" : color === 'rose' ? "text-rose-600" : "text-cyan-600"
-                    )} />
+                    {icon}
                 </span>
                 <div className={cn(
                     "flex items-center px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider",
                     isPositive ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"
                 )}>
                     {trend === 'up' ? <TrendingUp size={12} className="mr-1" /> : <TrendingDown size={12} className="mr-1" />}
-                    {trend === 'up' ? '+12.4%' : '-8.2%'}
+                    {trend === 'up' ? '+2.4%' : '-1.2%'}
                 </div>
             </div>
 
@@ -146,7 +224,7 @@ function DiagnosticCard({ label, value, trend, color }: { label: string, value: 
                 <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">{label}</span>
                 <div className="flex items-baseline space-x-2">
                     <span className="text-4xl font-black text-slate-900">{value}</span>
-                    <span className="text-slate-300 font-bold text-lg">/ 10</span>
+                    {!isPercent && !value.toString().includes('/') && <span className="text-slate-300 font-bold text-lg">/ 10</span>}
                 </div>
             </div>
 
@@ -154,10 +232,15 @@ function DiagnosticCard({ label, value, trend, color }: { label: string, value: 
                 <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
                     <motion.div
                         initial={{ width: 0 }}
-                        animate={{ width: `${(parseFloat(value) / 10) * 100}%` }}
+                        animate={{ width: `${Math.min(progressVal, 100)}%` }}
                         transition={{ duration: 1, ease: 'easeOut' }}
                         className={cn("h-full rounded-full",
-                            color === 'teal' ? "bg-teal-500" : color === 'rose' ? "bg-rose-500" : "bg-cyan-500"
+                            color === 'teal' ? "bg-teal-500" :
+                                color === 'rose' ? "bg-rose-500" :
+                                    color === 'cyan' ? "bg-cyan-500" :
+                                        color === 'emerald' ? "bg-emerald-500" :
+                                            color === 'indigo' ? "bg-indigo-500" :
+                                                "bg-amber-500"
                         )}
                     />
                 </div>

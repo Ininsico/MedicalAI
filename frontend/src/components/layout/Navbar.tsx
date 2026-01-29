@@ -17,11 +17,12 @@ const Navbar = () => {
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
+
     const navLinks = [
-        { name: 'Product', href: '#features' },
-        { name: 'Solutions', href: '#solutions' },
-        { name: 'Research', href: '#research' },
-        { name: 'Company', href: '#company' },
+        { name: 'Product', href: '/product' },
+        { name: 'Solutions', href: '/solutions' },
+        { name: 'Research', href: '/#research' },
+        { name: 'Company', href: '/#company' },
     ];
 
     return (

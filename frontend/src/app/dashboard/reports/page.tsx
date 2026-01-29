@@ -155,7 +155,7 @@ function ReportsContent() {
                         variant={success ? 'primary' : 'dark'}
                     >
                         {success ? (
-                            <>Protocol Exported <CheckCircle2 size={20} className="ml-2" /></>
+                            <>Report Generated <CheckCircle2 size={20} className="ml-2" /></>
                         ) : (
                             <>Generate PDF Report <Download size={20} className="ml-2" /></>
                         )}
@@ -167,39 +167,23 @@ function ReportsContent() {
                     <div className="relative z-10 flex flex-col justify-between h-full">
                         <div>
                             <div className="flex items-center space-x-3 mb-8">
-                                <Calendar className="text-teal-400" size={20} />
-                                <span className="text-xs font-black uppercase tracking-widest text-teal-400">Scheduled Reports</span>
+                                <Activity className="text-teal-400" size={20} />
+                                <span className="text-xs font-black uppercase tracking-widest text-teal-400">Researcher Access</span>
                             </div>
-                            <h3 className="text-2xl font-black mb-4 tracking-tight">Automated Distribution</h3>
+                            <h3 className="text-2xl font-black mb-4 tracking-tight">Raw Data Export</h3>
                             <p className="text-slate-400 font-medium leading-relaxed mb-8">
-                                Setup weekly encrypted exports to be sent directly to your care circle.
-                                (Currently in Clinical BETA)
+                                Download your complete unformatted sensor logs in CSV format.
+                                Ideal for secondary analysis in Python, MATLAB, or Excel.
                             </p>
                         </div>
-                        <div className="bg-white/5 p-4 rounded-xl border border-white/10 italic text-slate-500 text-sm">
-                            Feature expected in Protocol v4.5 update
-                        </div>
+                        <Button variant="outline" className="w-full border-white/20 text-white hover:bg-white/10 hover:text-white group">
+                            Export CSV Archive <Download size={18} className="ml-2 group-hover:translate-y-1 transition-transform" />
+                        </Button>
                     </div>
                 </Card>
             </div>
 
-            <div className="pt-12 border-t border-slate-100">
-                <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-8">Report Integrity Protocol</h4>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    <div className="flex items-start space-x-4">
-                        <div className="p-2 bg-slate-50 rounded-lg text-teal-600"><Activity size={16} /></div>
-                        <p className="text-xs font-medium text-slate-500 leading-relaxed">End-to-End Encryption applies to all generated documents.</p>
-                    </div>
-                    <div className="flex items-start space-x-4">
-                        <div className="p-2 bg-slate-50 rounded-lg text-teal-600"><AlertCircle size={16} /></div>
-                        <p className="text-xs font-medium text-slate-500 leading-relaxed">Cross-referenced with 7-day baseline for accuracy.</p>
-                    </div>
-                    <div className="flex items-start space-x-4">
-                        <div className="p-2 bg-slate-50 rounded-lg text-teal-600"><ShieldCheck size={16} /></div>
-                        <p className="text-xs font-medium text-slate-500 leading-relaxed">Verified as Clinical Decision Support Tool (Non-Diagnostic).</p>
-                    </div>
-                </div>
-            </div>
+
         </div>
     );
 }
@@ -209,7 +193,7 @@ export default function ReportsPage() {
         <Suspense fallback={
             <div className="flex items-center justify-center min-h-[400px]">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600"></div>
-                <span className="ml-3 text-slate-500">Initializing Report Engine...</span>
+                <span className="ml-3 text-slate-500">Loading...</span>
             </div>
         }>
             <ReportsContent />

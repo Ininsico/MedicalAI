@@ -12,6 +12,7 @@ export default function DashboardPage() {
     const [lastCheckIn, setLastCheckIn] = useState<any>(null);
     const [insights, setInsights] = useState<string[]>([]);
     const [averages, setAverages] = useState<any>(null);
+    const [logs, setLogs] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -27,15 +28,16 @@ export default function DashboardPage() {
 
                 // Fetch data based on role
                 if (userData.role === 'patient') {
-                    const logs = await api.patient.getLogs(userData.id);
-                    if (logs && logs.length > 0) {
-                        setLastCheckIn(logs[0]);
-                        const detected = detectUnusualChanges(logs);
+                    const fetchedLogs = await api.patient.getLogs(userData.id);
+                    if (fetchedLogs && fetchedLogs.length > 0) {
+                        setLogs(fetchedLogs);
+                        setLastCheckIn(fetchedLogs[0]);
+                        const detected = detectUnusualChanges(fetchedLogs);
                         if (detected) setInsights(detected);
 
-                        const avgTremor = logs.reduce((acc: number, log: any) => acc + (log.tremor_severity || 0), 0) / logs.length;
-                        const avgStiffness = logs.reduce((acc: number, log: any) => acc + (log.stiffness_severity || 0), 0) / logs.length;
-                        const avgSleep = logs.reduce((acc: number, log: any) => acc + (log.sleep_hours || 0), 0) / logs.length;
+                        const avgTremor = fetchedLogs.reduce((acc: number, log: any) => acc + (log.tremor_severity || 0), 0) / fetchedLogs.length;
+                        const avgStiffness = fetchedLogs.reduce((acc: number, log: any) => acc + (log.stiffness_severity || 0), 0) / fetchedLogs.length;
+                        const avgSleep = fetchedLogs.reduce((acc: number, log: any) => acc + (log.sleep_hours || 0), 0) / fetchedLogs.length;
                         setAverages({ tremor: avgTremor.toFixed(1), stiffness: avgStiffness.toFixed(1), sleep: avgSleep.toFixed(1) });
                     }
                 }
@@ -54,7 +56,7 @@ export default function DashboardPage() {
     if (loading) return (
         <div className="flex flex-col items-center justify-center h-[60vh] space-y-4">
             <div className="w-12 h-12 border-4 border-teal-500 border-t-transparent rounded-full animate-spin" />
-            <span className="text-slate-400 font-black uppercase tracking-widest text-[10px]">Navigating Clinical Environment</span>
+            <span className="text-slate-400 font-black uppercase tracking-widest text-[10px]">Loading Dashboard...</span>
         </div>
     );
 
@@ -78,11 +80,8 @@ export default function DashboardPage() {
             {/* Header */}
             <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                 <div>
-                    <div className="flex items-center space-x-3 text-teal-600 font-black text-[10px] uppercase tracking-[0.3em] mb-3">
-                        <Activity size={12} />
-                        <span>{user?.role === 'patient' ? 'Diagnostic Feed Online' : 'Clinical Monitoring Active'}</span>
-                    </div>
-                    <h1 className="text-5xl font-black text-slate-900 tracking-tighter">
+
+                    <h1 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tighter">
                         {getTimeGreeting()}, <span className="text-teal-600 italic font-serif font-light">{firstName}</span>
                     </h1>
                 </div>
@@ -93,10 +92,7 @@ export default function DashboardPage() {
                             <Calendar size={16} className="mr-2" />
                             {new Date().toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}
                         </div>
-                        <div className="hidden sm:flex items-center px-4 py-2 text-slate-500 font-bold text-sm border-l border-slate-100 italic font-serif">
-                            <Clock size={16} className="mr-2" />
-                            System Active
-                        </div>
+
                     </div>
 
                     <button
@@ -114,6 +110,7 @@ export default function DashboardPage() {
                     lastCheckIn={lastCheckIn}
                     insights={insights}
                     averages={averages}
+                    logs={logs}
                 />
             ) : (
                 <CaregiverDashboard />
