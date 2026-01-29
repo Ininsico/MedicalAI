@@ -1,6 +1,7 @@
+
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -10,7 +11,7 @@ import autoTable from 'jspdf-autotable';
 
 import { useSearchParams } from 'next/navigation';
 
-export default function ReportsPage() {
+function ReportsContent() {
     const searchParams = useSearchParams();
     const patientId = searchParams.get('u');
     const [loading, setLoading] = useState(false);
@@ -200,5 +201,18 @@ export default function ReportsPage() {
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function ReportsPage() {
+    return (
+        <Suspense fallback={
+            <div className="flex items-center justify-center min-h-[400px]">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600"></div>
+                <span className="ml-3 text-slate-500">Initializing Report Engine...</span>
+            </div>
+        }>
+            <ReportsContent />
+        </Suspense>
     );
 }
