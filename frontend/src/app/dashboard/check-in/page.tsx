@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { api } from '@/lib/api';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { useRouter } from 'next/navigation';
@@ -14,7 +14,10 @@ import {
     Heart,
     AlertCircle,
     Stethoscope,
-    Pill
+    Pill,
+    ShieldCheck,
+    ArrowRight,
+    LogOut
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
@@ -33,6 +36,7 @@ export default function CheckInPage() {
     const router = useRouter();
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
+    const [alreadyDone, setAlreadyDone] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [formData, setFormData] = useState({
         tremor: 5,
@@ -45,28 +49,46 @@ export default function CheckInPage() {
         notes: ''
     });
 
+    const [role, setRole] = useState<'patient' | 'caregiver'>('patient');
+
     useEffect(() => {
         async function fetchLastEntry() {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) return;
+            try {
+                const userStr = localStorage.getItem('user');
+                if (!userStr) return;
+                const user = JSON.parse(userStr);
+                setRole(user.role);
 
-            const { data: logs } = await supabase
-                .from('symptom_logs')
-                .select('*')
-                .eq('user_id', user.id)
-                .order('logged_at', { ascending: false })
-                .limit(1);
+                if (user.role === 'caregiver') return;
 
-            if (logs && logs.length > 0) {
-                const last = logs[0];
-                setFormData(prev => ({
-                    ...prev,
-                    tremor: last.tremor,
-                    stiffness: last.stiffness,
-                    balance: last.balance,
-                    sleep: last.sleep,
-                    mood: last.mood
-                }));
+                const logs = await api.patient.getLogs(user.id);
+
+                if (logs && logs.length > 0) {
+                    const last = logs[0];
+                    const isToday = (
+                        new Date(last.date).toDateString() === new Date().toDateString() ||
+                        new Date(last.created_at).toDateString() === new Date().toDateString()
+                    );
+
+                    if (isToday) {
+                        setAlreadyDone(true);
+                        return; // Don't prefill if already done, we'll show done screen
+                    }
+
+                    setFormData(prev => ({
+                        ...prev,
+                        tremor: last.tremor_severity || 5,
+                        stiffness: last.stiffness_severity || 5,
+                        balance: 5, // Not in backend yet
+                        sleep: last.sleep_hours || 5,
+                        mood: last.mood === 'excellent' ? 10 : last.mood === 'good' ? 8 : last.mood === 'neutral' ? 5 : last.mood === 'poor' ? 3 : 1,
+                        medication: last.medication_taken ? 'Yes' : 'Missed',
+                        sideEffects: last.symptoms || [],
+                        notes: last.notes || ''
+                    }));
+                }
+            } catch (error) {
+                console.error("Failed to fetch history:", error);
             }
         }
         fetchLastEntry();
@@ -95,81 +117,139 @@ export default function CheckInPage() {
         setLoading(true);
 
         try {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) {
+            const userStr = localStorage.getItem('user');
+            if (!userStr) {
                 alert("Authentication error. Please log in again.");
-                setLoading(false);
-                setSubmitting(false);
+                router.push('/login');
+                return;
+            }
+            const user = JSON.parse(userStr);
+
+            // Map numeric mood to enum
+            const mapMood = (val: number) => {
+                if (val >= 9) return 'excellent';
+                if (val >= 7) return 'good';
+                if (val >= 4) return 'neutral';
+                if (val >= 2) return 'poor';
+                return 'bad';
+            };
+
+            const payload = {
+                date: new Date().toISOString().split('T')[0],
+                mood: mapMood(formData.mood),
+                tremor_severity: formData.tremor,
+                stiffness_severity: formData.stiffness,
+                sleep_hours: formData.sleep,
+                medication_taken: formData.medication === 'Yes' || formData.medication === 'Partially',
+                medication_notes: formData.medication === 'Partially' ? 'Taken partially' : undefined,
+                symptoms: formData.sideEffects,
+                activity_level: 'moderate', // Default
+                notes: formData.notes
+            };
+
+            await api.patient.createLog(user.id, payload);
+
+            setSuccess(true);
+            setTimeout(() => router.push('/dashboard'), 2000);
+        } catch (err: any) {
+            console.error("Submission failed:", err);
+
+            // Check if it's a "duplicate log" error from backend
+            const errorMsg = err.response?.data?.error || err.message || '';
+            if (errorMsg.toLowerCase().includes('already exists')) {
+                setAlreadyDone(true);
                 return;
             }
 
-            // Create a timeout promise
-            const timeoutPromise = new Promise((_, reject) =>
-                setTimeout(() => reject(new Error('Request timeout')), 10000)
-            );
-
-            // Race between the insert and timeout
-            const insertPromise = supabase.from('symptom_logs').insert({
-                user_id: user.id,
-                tremor: formData.tremor,
-                stiffness: formData.stiffness,
-                balance: formData.balance,
-                sleep: formData.sleep,
-                mood: formData.mood,
-                medication_adherence: formData.medication,
-                side_effects: formData.sideEffects,
-                other_notes: formData.notes,
-            });
-
-            const { error } = await Promise.race([insertPromise, timeoutPromise]) as any;
-
-            if (error) {
-                console.error("Submission error:", error);
-                alert("Error submitting data: " + error.message + "\nPlease try again.");
-                setLoading(false);
-                setSubmitting(false);
-            } else {
-                setSuccess(true);
-                setTimeout(() => router.push('/dashboard'), 2000);
-            }
-        } catch (err: any) {
-            console.error("Submission failed:", err);
-            if (err.message === 'Request timeout') {
-                alert("Submission is taking longer than expected. Please check your connection and try again.");
-            } else {
-                alert("An unexpected error occurred. Please try again.");
-            }
+            alert("Error submitting data: " + (err.message || 'Unknown error'));
             setLoading(false);
             setSubmitting(false);
         }
     };
 
-    if (success) {
+    if (role === 'caregiver') {
         return (
-            <div className="flex flex-col items-center justify-center h-[70vh] text-center">
+            <div className="flex flex-col items-center justify-center h-[70vh] text-center px-6">
+                <div className="p-10 rounded-full mb-10 bg-slate-100 shadow-xl shadow-slate-200/20">
+                    <Stethoscope size={100} className="text-slate-400" />
+                </div>
+                <h2 className="text-4xl font-black text-slate-900 mb-6 tracking-tighter uppercase">Clinical Access Restricted</h2>
+                <p className="text-slate-500 font-medium text-lg max-w-md mx-auto leading-relaxed italic">
+                    Medical providers are authorized for data analysis only. Direct physiological logging must be executed by the primary patient node.
+                </p>
+                <Button
+                    onClick={() => router.push('/dashboard')}
+                    className="mt-12 px-12 py-6 rounded-2xl"
+                >
+                    Return to Matrix <ArrowRight size={20} className="ml-3" />
+                </Button>
+            </div>
+        );
+    }
+
+    if (success || alreadyDone) {
+        return (
+            <div className="flex flex-col items-center justify-center h-[70vh] text-center px-6">
                 <motion.div
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
-                    className="bg-emerald-100 p-8 rounded-full mb-8 shadow-2xl shadow-emerald-500/20"
+                    className={cn(
+                        "p-10 rounded-full mb-10 shadow-2xl transition-all",
+                        success ? "bg-emerald-100 shadow-emerald-500/20" : "bg-teal-100 shadow-teal-500/20"
+                    )}
                 >
-                    <CheckCircle2 size={120} className="text-emerald-600" />
+                    {success ? (
+                        <CheckCircle2 size={100} className="text-emerald-600" />
+                    ) : (
+                        <ShieldCheck size={100} className="text-teal-600" />
+                    )}
                 </motion.div>
-                <h2 className="text-5xl font-black text-slate-900 mb-4 tracking-tighter">Transmission Successful</h2>
-                <p className="text-slate-500 font-medium text-lg">Your daily baseline has been updated.</p>
+                <h2 className="text-5xl font-black text-slate-900 mb-6 tracking-tighter">
+                    {success ? "Transmission Successful" : "Daily Baseline Secured"}
+                </h2>
+                <p className="text-slate-500 font-medium text-xl max-w-md mx-auto leading-relaxed">
+                    {success
+                        ? "Your clinical data packets have been synchronized for today's analysis period."
+                        : "System indicates today's physiological calibration is already complete. Analysis engine is processing your data."}
+                </p>
+                {!success && (
+                    <Button
+                        onClick={() => router.push('/dashboard')}
+                        className="mt-12 px-12 py-6 rounded-2xl"
+                    >
+                        Return to Command Center <ArrowRight size={20} className="ml-3" />
+                    </Button>
+                )}
             </div>
         );
     }
 
     return (
         <div className="max-w-4xl mx-auto pt-10 pb-32">
-            <header className="mb-16 text-center">
-                <div className="inline-flex items-center space-x-2 bg-white/50 border border-white px-4 py-2 rounded-full mb-6">
-                    <span className="text-xs font-black tracking-widest uppercase text-slate-500">60-Second Rapid Calibration</span>
+            <header className="mb-16 flex justify-between items-start">
+                <div className="flex-1" />
+                <div className="flex-[2] text-center">
+                    <div className="inline-flex items-center space-x-2 bg-white/50 border border-white px-4 py-2 rounded-full mb-6">
+                        <span className="text-xs font-black tracking-widest uppercase text-slate-500">60-Second Rapid Calibration</span>
+                    </div>
+                    <h1 className="text-5xl font-black text-slate-900 tracking-tighter mb-4">Daily Check-In</h1>
+                    <p className="text-slate-500 font-medium max-w-lg mx-auto italic font-serif text-lg">
+                        Record your physiological state. This information is non-diagnostic.
+                    </p>
                 </div>
-                <h1 className="text-5xl font-black text-slate-900 tracking-tighter mb-4">Daily Check-In</h1>
-                <p className="text-slate-500 font-medium max-w-lg mx-auto italic font-serif text-lg">
-                    Record your physiological state. This information is non-diagnostic.
-                </p>
+                <div className="flex-1 flex justify-end">
+                    <button
+                        onClick={() => {
+                            localStorage.removeItem('token');
+                            localStorage.removeItem('user');
+                            window.location.href = '/login';
+                        }}
+                        className="p-4 bg-white/50 border border-white text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-2xl shadow-premium backdrop-blur-xl transition-all group"
+                        title="End Session"
+                    >
+                        <LogOut size={20} className="group-hover:rotate-12 transition-transform" />
+                    </button>
+                </div>
             </header>
 
             <form onSubmit={handleSubmit} className="space-y-12">

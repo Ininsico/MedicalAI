@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
     LayoutDashboard,
     ClipboardCheck,
@@ -16,18 +16,29 @@ import {
     ShieldAlert
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { supabase } from '@/lib/supabase';
 import { motion } from 'framer-motion';
 
 const Sidebar = () => {
     const pathname = usePathname();
+    const router = useRouter();
 
-    const handleLogout = async () => {
-        await supabase.auth.signOut();
+    const handleLogout = () => {
+        // Clear all session data
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+
+        // Redirect to login
         window.location.href = '/login';
     };
 
-    const menuItems = [
+    const [user, setUser] = React.useState<any>(null);
+
+    React.useEffect(() => {
+        const userStr = localStorage.getItem('user');
+        if (userStr) setUser(JSON.parse(userStr));
+    }, []);
+
+    const patientMenu = [
         { icon: LayoutDashboard, label: 'Overview', href: '/dashboard' },
         { icon: ClipboardCheck, label: 'Clinical Entry', href: '/dashboard/check-in' },
         { icon: TrendingUp, label: 'Analytics', href: '/dashboard/trends' },
@@ -35,6 +46,16 @@ const Sidebar = () => {
         { icon: Users, label: 'Network', href: '/dashboard/caregivers' },
         { icon: Settings, label: 'Compliance', href: '/dashboard/settings' },
     ];
+
+    const caregiverMenu = [
+        { icon: LayoutDashboard, label: 'Control Center', href: '/dashboard' },
+        { icon: Users, label: 'Patient Matrix', href: '/dashboard/caregivers' },
+        { icon: TrendingUp, label: 'Clinical Trends', href: '/dashboard/trends' },
+        { icon: FileText, label: 'Medical Reports', href: '/dashboard/reports' },
+        { icon: Settings, label: 'Configuration', href: '/dashboard/settings' },
+    ];
+
+    const menuItems = user?.role === 'caregiver' ? caregiverMenu : patientMenu;
 
     return (
         <div className="flex flex-col w-80 bg-white border-r border-slate-100 h-screen fixed left-0 top-0 z-50">

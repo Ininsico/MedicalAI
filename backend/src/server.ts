@@ -1,40 +1,93 @@
-import express from 'express';
+
+import 'dotenv/config';
+import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import morgan from 'morgan';
-import dotenv from 'dotenv';
+import rateLimit from 'express-rate-limit';
+import { supabase } from './lib/supabaseClient';
+import { createDefaultAdmin } from './controllers/authController';
 
-import logRoutes from './routes/logRoutes';
-import profileRoutes from './routes/profileRoutes';
-import analysisRoutes from './routes/analysisRoutes';
+// Import Routes
 import authRoutes from './routes/authRoutes';
+import adminRoutes from './routes/adminRoutes';
+import caregiverRoutes from './routes/caregiverRoutes';
+import patientRoutes from './routes/patientRoutes';
+import notificationRoutes from './routes/notificationRoutes';
 
-dotenv.config();
+// Swagger documentation
+import swaggerUi from 'swagger-ui-express';
+import { swaggerSpec } from './utils/swaggerConfig';
 
+
+/**
+ * Express application entry point.
+ * Configures security, rate limiting, routes, and error handling.
+ */
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 
-// Middleware
 app.use(helmet());
-app.use(cors());
-app.use(morgan('dev'));
-app.use(express.json());
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  credentials: true
+}));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Routes
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use('/api/', limiter);
+
 app.use('/api/auth', authRoutes);
-app.use('/api/logs', logRoutes);
-app.use('/api/profile', profileRoutes);
-app.use('/api/analysis', analysisRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/caregiver', caregiverRoutes);
+app.use('/api/patients', patientRoutes);
+app.use('/api/notifications', notificationRoutes);
 
-// Health Check
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
 app.get('/health', (req, res) => {
-    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    supabaseConnected: !!supabase
+  });
 });
 
-app.listen(PORT, () => {
-    console.log('--------------------------------------------------');
-    console.log(`🚀 NEURODYNAMIC BACKEND v4.0`);
-    console.log(`📡 STATUS: ACTIVE ON PORT ${PORT}`);
-    console.log(`🔗 LOCAL: http://localhost:${PORT}`);
-    console.log('--------------------------------------------------');
+app.use('*', (req: Request, res: Response) => {
+  res.status(404).json({
+    error: 'Route not found',
+    path: req.originalUrl,
+    method: req.method,
+    timestamp: new Date().toISOString()
+  });
 });
+
+app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+  const statusCode = err.statusCode || 500;
+  const message = err.message || 'Internal server error';
+
+  res.status(statusCode).json({
+    error: message,
+    timestamp: new Date().toISOString(),
+    path: req.path,
+    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+  });
+});
+
+const startServer = async () => {
+  await createDefaultAdmin();
+
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+    console.log(`API Documentation available at http://localhost:${PORT}/api-docs`);
+  });
+};
+
+startServer();
+
+export default app;
