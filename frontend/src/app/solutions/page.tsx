@@ -51,7 +51,7 @@ export default function SolutionsPage() {
                                 <span className="text-teal-600">Neurology Departments.</span>
                             </h1>
                             <p className="text-xl text-slate-500 font-medium leading-relaxed mb-10 max-w-2xl">
-                                ParkiTrack isn't just an app. It's a full-stack clinical infrastructure that integrates with Epic, Cerner, and Allscripts to automate patient monitoring at scale.
+                                SSI isn't just an app. It's a full-stack clinical infrastructure that integrates with Epic, Cerner, and Allscripts to automate patient monitoring at scale.
                             </p>
                             <div className="flex flex-wrap gap-4">
                                 <Button size="lg" className="h-14 px-8 text-lg bg-slate-900 hover:bg-slate-800 text-white rounded-lg">
@@ -106,7 +106,7 @@ export default function SolutionsPage() {
                         isNegative
                     />
                     <ComparisonBox
-                        title="The ParkiTrack Standard"
+                        title="The SSI Standard"
                         items={[
                             "Continuous 24/7 passive monitoring",
                             "Objective sensor-based quantification",
@@ -125,7 +125,7 @@ export default function SolutionsPage() {
                             <span className="text-teal-600 font-bold uppercase tracking-widest text-sm mb-2 block">Interoperability First</span>
                             <h2 className="text-4xl font-black text-slate-900 mb-6">Seamless EHR Integration.</h2>
                             <p className="text-lg text-slate-600 leading-relaxed mb-8">
-                                We know that adding another portal creates fatigue. That's why ParkiTrack lives inside your existing workflow.
+                                We know that adding another portal creates fatigue. That's why SSI lives inside your existing workflow.
                                 We support bi-directional data sync via FHIR R4 resources.
                             </p>
                             <ul className="space-y-4">
@@ -294,7 +294,7 @@ export default function SolutionsPage() {
                         />
                         <FaqItem
                             q="How does billing work for Remote Patient Monitoring (RPM)?"
-                            a="ParkiTrack automatically logs time spent reviewing data, generating audit-ready reports for CPT codes 99453, 99454, and 99457."
+                            a="SSI automatically logs time spent reviewing data, generating audit-ready reports for CPT codes 99453, 99454, and 99457."
                         />
                     </div>
                 </div>
@@ -307,7 +307,7 @@ export default function SolutionsPage() {
                         Ready to modernize your Neurology Department?
                     </h2>
                     <p className="text-xl text-slate-400 mb-12">
-                        Join 200+ forward-thinking clinics using ParkiTrack.
+                        Join 200+ forward-thinking clinics using SSI.
                     </p>
                     <div className="flex flex-col sm:flex-row justify-center gap-4">
                         <Link href="/contact">

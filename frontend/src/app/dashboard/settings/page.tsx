@@ -43,7 +43,7 @@ export default function CompliancePage() {
                 </div>
             </header>
             <p className="mt-4 text-slate-500 font-medium max-w-2xl leading-relaxed">
-                ParkiTrack's clinical stream is protected by end-to-end cryptographic integrity and strict regulatory compliance controls.
+                SSI's clinical stream is protected by end-to-end cryptographic integrity and strict regulatory compliance controls.
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">

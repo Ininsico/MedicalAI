@@ -242,7 +242,7 @@ function ReportsContent() {
                 doc.text(`Pages ${i} of ${pageCount}`, 180, 285);
             }
 
-            doc.save(`ParkiTrack_FullRecord_${reportPatientName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
+            doc.save(`SSI_FullRecord_${reportPatientName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
             setSuccess(true);
             setLoading(false);
             setTimeout(() => setSuccess(false), 3000);

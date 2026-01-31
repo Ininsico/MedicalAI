@@ -40,7 +40,7 @@ export default function ProductPage() {
                             <span className="text-gradient">Medical Diagnosis.</span>
                         </h1>
                         <p className="text-xl md:text-2xl text-slate-500 max-w-3xl mx-auto font-medium leading-relaxed mb-12">
-                            ParkiTrack leverages advanced neural networks to detect early-stage Parkinson's markers.
+                            SSI leverages advanced neural networks to detect early-stage Parkinson's markers.
                             Autonomous, precise, and continuously learning from every interaction.
                         </p>
 
@@ -144,7 +144,7 @@ export default function ProductPage() {
                         Free. Open. Yours.
                     </h2>
                     <p className="text-xl text-slate-400 mb-12 leading-relaxed">
-                        We believe healthcare algorithms should be transparent. That's why ParkiTrack is MIT Licensed.
+                        We believe healthcare algorithms should be transparent. That's why SSI is MIT Licensed.
                         Fork it, modify it, deploy it for your clinic without paying a cent.
                     </p>
                     <Link href="https://github.com/Ininsico/MedicalAI" target="_blank">

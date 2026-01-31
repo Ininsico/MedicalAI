@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "ParkiTrack | Precision Parkinson's Intelligence",
+  title: "SSI | Precision Parkinson's Intelligence",
   description: "Next-generation symptom tracking and longitudinal AI analysis for Parkinson's disease management.",
 };
 

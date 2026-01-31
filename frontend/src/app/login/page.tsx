@@ -76,7 +76,7 @@ export default function LoginPage() {
                                 required
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
-                                placeholder="clinician@health.parkitrack.com"
+                                placeholder="clinician@health.SSI.com"
                                 icon={<Mail size={20} />}
                             />
 

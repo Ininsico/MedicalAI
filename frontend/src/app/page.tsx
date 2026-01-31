@@ -318,10 +318,10 @@ export default function LandingPage() {
           <Stethoscope className="text-teal-500 w-16 h-16 mx-auto mb-10 opacity-50" />
           <h2 className="text-3xl md:text-5xl font-serif text-white italic leading-relaxed mb-12">
             "Technology should be the bridge, not the barrier, in neurological care.
-            ParkiTrack delivers on that promise with elegance."
+            SSI delivers on that promise with elegance."
           </h2>
           <div className="flex flex-col items-center">
-            <span className="text-white font-bold text-xl tracking-wide uppercase">Dr. Arslan Abdullah</span>
+            <span className="text-white font-bold text-xl tracking-wide uppercase">Mr. Arslan Rathore</span>
             <span className="text-teal-500 font-bold text-xs tracking-[0.3em] uppercase mt-2">Chief Medical Advisor</span>
           </div>
         </div>
@@ -351,7 +351,7 @@ export default function LandingPage() {
             <div className="w-10 h-10 bg-slate-900 rounded-xl flex items-center justify-center">
               <Activity size={22} className="text-teal-500" />
             </div>
-            <span className="text-2xl font-black tracking-tighter text-slate-900">ParkiTrack</span>
+            <span className="text-2xl font-black tracking-tighter text-slate-900">SSI</span>
           </div>
           <div className="flex flex-wrap justify-center gap-8 font-bold text-sm text-slate-400 uppercase tracking-widest">
             <Link href="https://github.com/Ininsico/MedicalAI" className="hover:text-teal-600 transition-all flex items-center"><Github size={16} className="mr-2" /> Source Code</Link>

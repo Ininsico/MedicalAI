@@ -45,7 +45,7 @@ const Navbar = () => {
                             <Activity size={22} className="text-white" />
                         </div>
                         <span className="text-2xl font-black tracking-tighter text-slate-900 group-hover:text-teal-600 transition-colors">
-                            ParkiTrack
+                            SSI
                         </span>
                     </Link>
 
