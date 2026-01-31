@@ -278,7 +278,8 @@ const calculateAdherenceStats = (logs: any[]) => {
             medication_days: 0,
             adherence_rate: 0,
             streak: 0,
-            last_medication_date: null
+            last_medication_date: null,
+            average_mood: 'N/A'
         };
     }
 
@@ -288,8 +289,6 @@ const calculateAdherenceStats = (logs: any[]) => {
 
     // Calculate current streak
     let streak = 0;
-    const sortedLogs = [...logs].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
     // Note: Streak calculation might need more robust "consecutive days" logic but using simplified version from original code
     // The original code was sort DESCENDING (b-a)
     const sortedLogsDesc = [...logs].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -302,12 +301,33 @@ const calculateAdherenceStats = (logs: any[]) => {
         }
     }
 
+    // Average mood (convert to score)
+    const moodScores: Record<string, number> = {
+        'excellent': 5,
+        'good': 4,
+        'neutral': 3,
+        'poor': 2,
+        'bad': 1
+    };
+    const averageMoodScore = logs.reduce((sum, log) => {
+        return sum + (moodScores[log.mood?.toLowerCase()] || 3);
+    }, 0) / logs.length;
+
+    const getMoodFromScore = (score: number) => {
+        if (score >= 4.5) return 'Excellent';
+        if (score >= 3.5) return 'Good';
+        if (score >= 2.5) return 'Neutral';
+        if (score >= 1.5) return 'Poor';
+        return 'Bad';
+    };
+
     return {
         total_days: totalDays,
         medication_days: medicationDays,
         adherence_rate: parseFloat(adherenceRate.toFixed(2)),
         streak: streak,
-        last_medication_date: sortedLogsDesc[0]?.date || null
+        last_medication_date: sortedLogsDesc[0]?.date || null,
+        average_mood: getMoodFromScore(averageMoodScore)
     };
 };
 

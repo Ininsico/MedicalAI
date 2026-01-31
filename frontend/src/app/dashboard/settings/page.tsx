@@ -72,41 +72,7 @@ export default function CompliancePage() {
                 </Card>
             </div>
 
-            <section className="space-y-8">
-                <h2 className="text-2xl font-black text-slate-900 tracking-tight flex items-center">
-                    <CheckCircle2 size={24} className="mr-3 text-emerald-500" /> Compliance Status
-                </h2>
 
-                <Card className="p-0 overflow-hidden border-slate-100" hover={false}>
-                    <table className="w-full text-left">
-                        <thead>
-                            <tr className="bg-slate-50 border-b border-slate-100">
-                                <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Protocol</th>
-                                <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
-                                <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Last Verified</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                            {[
-                                { protocol: 'Data Residency (EU/US)', status: 'Compliant', date: '2026-01-28' },
-                                { protocol: 'Encryption at Rest (Vault v2)', status: 'Active', date: '2026-01-29' },
-                                { protocol: 'Caregiver Authorization Loops', status: 'Enforced', date: '2026-01-29' },
-                                { protocol: 'Secondary PII Isolation', status: 'Nominal', date: '2026-01-25' }
-                            ].map((row, i) => (
-                                <tr key={i}>
-                                    <td className="px-8 py-5 text-sm font-black text-slate-900">{row.protocol}</td>
-                                    <td className="px-8 py-5">
-                                        <span className="inline-flex items-center px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-[10px] font-black uppercase tracking-widest">
-                                            {row.status}
-                                        </span>
-                                    </td>
-                                    <td className="px-8 py-5 text-sm font-medium text-slate-500 font-mono">{row.date}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </Card>
-            </section>
 
             <section className="bg-rose-50 rounded-[32px] p-10 flex flex-col md:flex-row items-center justify-between gap-8">
                 <div className="flex items-start space-x-6">

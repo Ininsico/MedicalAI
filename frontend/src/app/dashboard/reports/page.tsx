@@ -8,6 +8,8 @@ import { Card } from '@/components/ui/Card';
 import { FileText, Download, Calendar, Activity, CheckCircle2, AlertCircle, ShieldCheck, LogOut } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 import { useSearchParams } from 'next/navigation';
 
@@ -17,6 +19,23 @@ function ReportsContent() {
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
     const [patientInfo, setPatientInfo] = useState<any>(null);
+    const [role, setRole] = useState<'patient' | 'caregiver'>('patient');
+    const [assignedPatients, setAssignedPatients] = useState<any[]>([]);
+
+    React.useEffect(() => {
+        const userStr = localStorage.getItem('user');
+        if (userStr) {
+            const user = JSON.parse(userStr);
+            setRole(user.role);
+            if (user.role === 'caregiver') {
+                api.caregiver.getDashboard().then(res => {
+                    if (res && res.assignments) {
+                        setAssignedPatients(res.assignments.map((a: any) => a.patient));
+                    }
+                });
+            }
+        }
+    }, []);
 
     // AI State
     const [aiLoading, setAiLoading] = useState(false);
@@ -48,7 +67,7 @@ function ReportsContent() {
         }
     };
 
-    const generatePDF = async () => {
+    const generatePDF = async (targetId?: string, targetName?: string) => {
         setLoading(true);
         try {
             const userStr = localStorage.getItem('user');
@@ -60,19 +79,28 @@ function ReportsContent() {
             const user = JSON.parse(userStr);
 
             let logs = [];
-            let reportPatientId = user.id;
-            let reportPatientName = user.full_name;
-            let patientDob = user.date_of_birth || "N/A";
+            let reportPatientId = targetId || user.id;
+            let reportPatientName = targetName || user.full_name;
+            let patientDob = "N/A";
 
-            if (user.role === 'caregiver' && patientId) {
-                const res = await api.caregiver.getPatientLogs(patientId);
+            if (user.role === 'caregiver') {
+                // If a specific target ID is passed (from list), use it.
+                // Otherwise check URL param.
+                const pid = targetId || patientId;
+                if (!pid) {
+                    alert("No patient selected");
+                    setLoading(false);
+                    return;
+                }
+                const res = await api.caregiver.getPatientLogs(pid);
                 logs = res.logs || [];
                 setPatientInfo(res.patient);
-                reportPatientId = patientId;
-                reportPatientName = res.patient?.full_name || 'Patient';
+                reportPatientId = pid;
+                if (!targetName) reportPatientName = res.patient?.full_name || 'Patient';
                 patientDob = res.patient?.date_of_birth || "N/A";
             } else {
                 logs = await api.patient.getLogs(user.id);
+                patientDob = user.date_of_birth || "N/A";
             }
 
             if (!logs || logs.length === 0) {
@@ -180,8 +208,8 @@ function ReportsContent() {
                 alternateRowStyles: { fillColor: [241, 245, 249] },
             });
 
-            // --- AI ANALYSIS SECTION ---
-            if (aiReport) {
+            // --- AI ANALYSIS SECTION (ONLY FOR PATIENTS) ---
+            if (aiReport && user.role !== 'caregiver') {
                 doc.addPage();
 
                 // AI Header
@@ -214,7 +242,7 @@ function ReportsContent() {
                 doc.text(`Pages ${i} of ${pageCount}`, 180, 285);
             }
 
-            doc.save(`ParkiTrack_FullRecord_${new Date().toISOString().split('T')[0]}.pdf`);
+            doc.save(`ParkiTrack_FullRecord_${reportPatientName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
             setSuccess(true);
             setLoading(false);
             setTimeout(() => setSuccess(false), 3000);
@@ -238,7 +266,7 @@ function ReportsContent() {
                         <span>Clinical Export Module</span>
                     </div>
                     <h1 className="text-5xl font-black text-slate-900 tracking-tighter">
-                        {patientId && patientInfo ? patientInfo.full_name : 'Analytical'} <span className="text-slate-400 italic font-serif font-light">{patientId && patientInfo ? 'Report' : 'Reports'}</span>
+                        {patientId && patientInfo ? patientInfo.full_name : (role === 'caregiver' ? 'Patient Repository' : 'Analytical')} <span className="text-slate-400 italic font-serif font-light">{patientId && patientInfo ? 'Report' : 'Reports'}</span>
                     </h1>
                 </div>
 
@@ -257,90 +285,107 @@ function ReportsContent() {
                 </div>
             </header>
 
-            {/* AI Report Section */}
-            <Card className="p-0 border border-slate-100 overflow-hidden bg-white shadow-xl relative">
-                <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-teal-500/5 blur-[100px] rounded-full" />
-                <div className="relative z-10 p-10">
-                    <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-8 mb-8">
-                        <div>
-                            <div className="flex items-center space-x-3 text-teal-600 font-bold text-xs uppercase tracking-[0.2em] mb-3">
-                                <Activity size={16} />
-                                <span>ParkTrack AI</span>
-                            </div>
-                            <h2 className="text-3xl font-black tracking-tight text-slate-900">Advanced Clinical Insight Engine</h2>
-                            <p className="text-slate-500 mt-2 max-w-2xl">
-                                Leverage our advanced custom AI engine to analyze historical patient data, identifying subtle correlations between tremor, stiffness, sleep, mood, and medication adherence that may be missed by standard reviews.
-                            </p>
+            {role === 'caregiver' ? (
+                <div className="grid grid-cols-1 gap-6">
+                    <Card className="p-0 overflow-hidden border-slate-100" hover={false}>
+                        <div className="p-8 border-b border-slate-50 bg-slate-50/50">
+                            <h3 className="text-xl font-black text-slate-900">Enrolled Patient Reports</h3>
+                            <p className="text-slate-500 text-sm mt-1">Select a patient to generate and download their full clinical history PDF.</p>
                         </div>
-                        <Button
-                            onClick={generateAiSummary}
-                            isLoading={aiLoading}
-                            className="bg-teal-600 hover:bg-teal-700 text-white border-0 py-6 px-8 rounded-2xl text-lg shadow-lg shadow-teal-900/10"
-                        >
-                            {aiLoading ? 'Analyzing...' : 'Generate AI Analysis'}
-                            {!aiLoading && <Activity className="ml-2" />}
-                        </Button>
-                    </div>
-
-                    {aiReport && (
-                        <div className="bg-slate-50 rounded-2xl p-8 border border-slate-200 mt-6 animate-in fade-in zoom-in duration-300">
-                            <div className="prose prose-slate prose-lg max-w-none">
-                                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                    {aiReport}
-                                </ReactMarkdown>
-                            </div>
+                        <div className="divide-y divide-slate-100">
+                            {assignedPatients.length === 0 ? (
+                                <div className="p-12 text-center text-slate-400 font-medium">No patients found.</div>
+                            ) : (
+                                assignedPatients.map((patient: any) => (
+                                    <div key={patient.id} className="p-6 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                                        <div className="flex items-center space-x-4">
+                                            <div className="w-12 h-12 bg-slate-200 rounded-xl flex items-center justify-center font-black text-slate-500">
+                                                {patient.full_name.charAt(0)}
+                                            </div>
+                                            <div>
+                                                <div className="font-bold text-slate-900">{patient.full_name}</div>
+                                                <div className="text-xs text-slate-400 font-mono uppercase tracking-widest">ID: {patient.id.slice(0, 8)}</div>
+                                            </div>
+                                        </div>
+                                        <Button
+                                            onClick={() => generatePDF(patient.id, patient.full_name)}
+                                            variant="outline"
+                                            className="border-slate-200 hover:bg-white hover:border-teal-500 text-slate-600 hover:text-teal-600"
+                                            isLoading={loading}
+                                        >
+                                            <Download size={16} className="mr-2" /> Download Record
+                                        </Button>
+                                    </div>
+                                ))
+                            )}
                         </div>
-                    )}
+                    </Card>
                 </div>
-            </Card>
-
-
-            <div className="grid grid-cols-1 gap-10">
-                <Card className="p-10 border-white/50" hover={false}>
-                    <div className="w-16 h-16 bg-teal-50 rounded-2xl flex items-center justify-center text-teal-600 mb-8">
-                        <Download size={28} />
-                    </div>
-                    <h3 className="text-2xl font-black text-slate-900 mb-4 tracking-tight">Full Longitudinal Summary</h3>
-                    <p className="text-slate-500 font-medium leading-relaxed mb-8">
-                        Generates a high-density clinical summary including tremor trends, medication adherence,
-                        and pattern recognition insights. Designed for direct presentation to neurologists.
-                    </p>
-                    <Button
-                        onClick={generatePDF}
-                        className="w-full py-6 text-lg rounded-[24px]"
-                        isLoading={loading}
-                        variant={success ? 'primary' : 'dark'}
-                    >
-                        {success ? (
-                            <>Report Generated <CheckCircle2 size={20} className="ml-2" /></>
-                        ) : (
-                            <>Generate PDF Report <Download size={20} className="ml-2" /></>
-                        )}
-                    </Button>
-                </Card>
-
-                <Card className="p-10 bg-slate-900 text-white border-none relative overflow-hidden" hover={false}>
-                    <div className="absolute top-[-10%] right-[-10%] w-32 h-32 bg-teal-500/10 blur-[60px] rounded-full" />
-                    <div className="relative z-10 flex flex-col justify-between h-full">
-                        <div>
-                            <div className="flex items-center space-x-3 mb-8">
-                                <Activity className="text-teal-400" size={20} />
-                                <span className="text-xs font-black uppercase tracking-widest text-teal-400">Researcher Access</span>
+            ) : (
+                <>
+                    {/* AI Report Section */}
+                    <Card className="p-0 border border-slate-100 overflow-hidden bg-white shadow-xl relative">
+                        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-teal-500/5 blur-[100px] rounded-full" />
+                        <div className="relative z-10 p-10">
+                            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-8 mb-8">
+                                <div>
+                                    <div className="flex items-center space-x-3 text-teal-600 font-bold text-xs uppercase tracking-[0.2em] mb-3">
+                                        <Activity size={16} />
+                                        <span>ParkTrack AI</span>
+                                    </div>
+                                    <h2 className="text-3xl font-black tracking-tight text-slate-900">Advanced Clinical Insight Engine</h2>
+                                    <p className="text-slate-500 mt-2 max-w-2xl">
+                                        Leverage our advanced custom AI engine to analyze historical patient data, identifying subtle correlations between tremor, stiffness, sleep, mood, and medication adherence that may be missed by standard reviews.
+                                    </p>
+                                </div>
+                                <Button
+                                    onClick={generateAiSummary}
+                                    isLoading={aiLoading}
+                                    className="bg-teal-600 hover:bg-teal-700 text-white border-0 py-6 px-8 rounded-2xl text-lg shadow-lg shadow-teal-900/10"
+                                >
+                                    {aiLoading ? 'Analyzing...' : 'Generate AI Analysis'}
+                                    {!aiLoading && <Activity className="ml-2" />}
+                                </Button>
                             </div>
-                            <h3 className="text-2xl font-black mb-4 tracking-tight">Raw Data Export</h3>
-                            <p className="text-slate-400 font-medium leading-relaxed mb-8">
-                                Download your complete unformatted sensor logs in CSV format.
-                                Ideal for secondary analysis in Python, MATLAB, or Excel.
-                            </p>
+
+                            {aiReport && (
+                                <div className="bg-slate-50 rounded-2xl p-8 border border-slate-200 mt-6 animate-in fade-in zoom-in duration-300">
+                                    <div className="prose prose-slate prose-lg max-w-none">
+                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                            {aiReport}
+                                        </ReactMarkdown>
+                                    </div>
+                                </div>
+                            )}
                         </div>
-                        <Button variant="outline" className="w-full border-white/20 text-white hover:bg-white/10 hover:text-white group">
-                            Export CSV Archive <Download size={18} className="ml-2 group-hover:translate-y-1 transition-transform" />
-                        </Button>
+                    </Card>
+
+                    <div className="grid grid-cols-1 gap-10 mt-10">
+                        <Card className="p-10 border-white/50" hover={false}>
+                            <div className="w-16 h-16 bg-teal-50 rounded-2xl flex items-center justify-center text-teal-600 mb-8">
+                                <Download size={28} />
+                            </div>
+                            <h3 className="text-2xl font-black text-slate-900 mb-4 tracking-tight">Full Longitudinal Summary</h3>
+                            <p className="text-slate-500 font-medium leading-relaxed mb-8">
+                                Generates a high-density clinical summary including tremor trends, medication adherence,
+                                and pattern recognition insights. Designed for direct presentation to neurologists.
+                            </p>
+                            <Button
+                                onClick={() => generatePDF()}
+                                className="w-full py-6 text-lg rounded-[24px]"
+                                isLoading={loading}
+                                variant={success ? 'primary' : 'dark'}
+                            >
+                                {success ? (
+                                    <>Report Generated <CheckCircle2 size={20} className="ml-2" /></>
+                                ) : (
+                                    <>Generate PDF Report <Download size={20} className="ml-2" /></>
+                                )}
+                            </Button>
+                        </Card>
                     </div>
-                </Card>
-            </div>
-
-
+                </>
+            )}
         </div>
     );
 }

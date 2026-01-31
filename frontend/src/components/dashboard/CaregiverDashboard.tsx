@@ -62,7 +62,7 @@ export default function CaregiverDashboard() {
     return (
         <div className="space-y-12 pb-24">
             {/* Summary Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <StatCard
                     label="Assigned Patients"
                     value={stats.total_patients}
@@ -76,13 +76,6 @@ export default function CaregiverDashboard() {
                     icon={<Activity size={20} />}
                     trend="85% completion"
                     color="teal"
-                />
-                <StatCard
-                    label="Medication Adherence"
-                    value={`${Math.round((stats.medications_taken / (stats.todays_logs || 1)) * 100)}%`}
-                    icon={<CheckCircle2 size={20} />}
-                    trend="Stable"
-                    color="emerald"
                 />
                 <StatCard
                     label="Clinical Alerts"
@@ -180,32 +173,7 @@ export default function CaregiverDashboard() {
                     </Card>
 
                     {/* Quick Access Tools */}
-                    <div className="space-y-4">
-                        <button className="w-full flex items-center justify-between p-6 bg-white/50 border border-white rounded-[24px] shadow-premium hover:bg-white transition-all group">
-                            <div className="flex items-center space-x-4">
-                                <div className="p-3 bg-cyan-100 text-cyan-600 rounded-xl group-hover:rotate-6 transition-transform">
-                                    <FileText size={20} />
-                                </div>
-                                <div className="text-left">
-                                    <div className="text-sm font-black text-slate-900 uppercase tracking-tight">Generate Bulk Reports</div>
-                                    <div className="text-[10px] text-slate-500 font-medium">Multi-patient synthesis</div>
-                                </div>
-                            </div>
-                            <ChevronRight size={16} className="text-slate-300" />
-                        </button>
-                        <button className="w-full flex items-center justify-between p-6 bg-white/50 border border-white rounded-[24px] shadow-premium hover:bg-white transition-all group">
-                            <div className="flex items-center space-x-4">
-                                <div className="p-3 bg-teal-100 text-teal-600 rounded-xl group-hover:rotate-6 transition-transform">
-                                    <Share2 size={20} />
-                                </div>
-                                <div className="text-left">
-                                    <div className="text-sm font-black text-slate-900 uppercase tracking-tight">Provision Client Link</div>
-                                    <div className="text-[10px] text-slate-500 font-medium">New patient onboarding</div>
-                                </div>
-                            </div>
-                            <ChevronRight size={16} className="text-slate-300" />
-                        </button>
-                    </div>
+
                 </div>
             </div>
         </div>
@@ -296,9 +264,15 @@ function PatientCard({ patient, notes }: { patient: any, notes: string }) {
             </div>
             {/* Side Action Bar */}
             <div className="bg-slate-50 border-l border-slate-100 p-4 flex md:flex-col justify-around items-center space-y-4">
-                <ActionIcon icon={<Activity size={18} />} label="Live" />
-                <ActionIcon icon={<TrendingUp size={18} />} label="Trends" />
-                <ActionIcon icon={<BriefcaseMedical size={18} />} label="Meds" />
+                <Link href={`/dashboard/patients/${patient.id}`}>
+                    <ActionIcon icon={<Activity size={18} />} label="Live" />
+                </Link>
+                <Link href={`/dashboard/patients/${patient.id}`}>
+                    <ActionIcon icon={<TrendingUp size={18} />} label="Trends" />
+                </Link>
+                <Link href={`/dashboard/patients/${patient.id}`}>
+                    <ActionIcon icon={<BriefcaseMedical size={18} />} label="Meds" />
+                </Link>
             </div>
         </Card>
     );

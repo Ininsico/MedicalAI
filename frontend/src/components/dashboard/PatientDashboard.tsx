@@ -81,36 +81,107 @@ export default function PatientDashboard({ lastCheckIn, insights, averages, logs
                         )}
                     </div>
                 </Card>
+
+                {/* AI Insights Section */}
+                {insights && insights.length > 0 && (
+                    <div className="space-y-4">
+                        {insights.map((insight, index) => (
+                            <motion.div
+                                key={index}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: index * 0.1 }}
+                                className="bg-indigo-50 border border-indigo-100 p-6 rounded-[24px] flex items-start space-x-4"
+                            >
+                                <div className="p-3 bg-white text-indigo-600 rounded-xl shadow-sm">
+                                    <Activity size={20} />
+                                </div>
+                                <div>
+                                    <h4 className="text-sm font-black text-indigo-900 uppercase tracking-wider mb-1">Pattern Analysis</h4>
+                                    <p className="text-indigo-700/80 font-medium text-sm leading-relaxed">
+                                        {insight}
+                                    </p>
+                                </div>
+                            </motion.div>
+                        ))}
+                    </div>
+                )}
             </div>
 
             {/* Analytics Graph Section */}
             <Card className="p-8 border-slate-100 shadow-sm">
                 <div className="flex items-center justify-between mb-8">
                     <div>
-                        <h3 className="text-2xl font-black text-slate-900 tracking-tight">Tremor & Stiffness Analytics</h3>
-                        <p className="text-slate-500 font-medium">visualization of neural motor symptoms over the last 30 days.</p>
+                        <h3 className="text-2xl font-black text-slate-900 tracking-tight">Comprehensive Clinical Analytics</h3>
+                        <p className="text-slate-500 font-medium">Multi-factor visualization of neutral, physical, and emotional indicators.</p>
                     </div>
-                    <div className="flex items-center space-x-4">
+                    <div className="flex flex-wrap gap-4 items-center">
                         <div className="flex items-center text-xs font-bold text-slate-500 uppercase tracking-widest">
                             <span className="w-3 h-3 rounded-full bg-teal-500 mr-2" /> Tremor
                         </div>
                         <div className="flex items-center text-xs font-bold text-slate-500 uppercase tracking-widest">
-                            <span className="w-3 h-3 rounded-full bg-indigo-500 mr-2" /> Stiffness
+                            <span className="w-3 h-3 rounded-full bg-rose-500 mr-2" /> Stiffness
+                        </div>
+                        <div className="flex items-center text-xs font-bold text-slate-500 uppercase tracking-widest">
+                            <span className="w-3 h-3 rounded-full bg-cyan-500 mr-2" /> Sleep
+                        </div>
+                        <div className="flex items-center text-xs font-bold text-slate-500 uppercase tracking-widest">
+                            <span className="w-3 h-3 rounded-full bg-indigo-500 mr-2" /> Mood
+                        </div>
+                        <div className="flex items-center text-xs font-bold text-slate-500 uppercase tracking-widest">
+                            <span className="w-3 h-3 rounded-full bg-amber-500 mr-2" /> Mobility
                         </div>
                     </div>
                 </div>
 
                 <div className="h-[400px] w-full">
                     <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={logs ? [...logs].reverse() : []} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                        <AreaChart
+                            data={logs ? [...logs].reverse().map(log => {
+                                // Process Mood
+                                let moodVal = 5;
+                                const m = log.mood?.toLowerCase();
+                                if (m === 'excellent' || m === 'good') moodVal = 9;
+                                else if (m === 'neutral' || m === 'ok') moodVal = 5;
+                                else if (m === 'poor' || m === 'bad') moodVal = 2;
+
+                                // Process Mobility (Activity Level)
+                                let mobVal = 5;
+                                const a = log.activity_level?.toLowerCase();
+                                if (a === 'high' || a === 'very active') mobVal = 9;
+                                else if (a === 'moderate') mobVal = 6;
+                                else if (a === 'low' || a === 'sedentary') mobVal = 3;
+
+                                return {
+                                    ...log,
+                                    mood_score: moodVal,
+                                    mobility_score: mobVal,
+                                    medication_score: log.medication_taken ? 8 : 1, // Visual height for binary
+                                    sleep_hours: Number(log.sleep_hours) || 0
+                                };
+                            }) : []}
+                            margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                        >
                             <defs>
                                 <linearGradient id="colorTremor" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#14b8a6" stopOpacity={0.3} />
+                                    <stop offset="5%" stopColor="#14b8a6" stopOpacity={0.2} />
                                     <stop offset="95%" stopColor="#14b8a6" stopOpacity={0} />
                                 </linearGradient>
                                 <linearGradient id="colorStiffness" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
+                                    <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.2} />
+                                    <stop offset="95%" stopColor="#f43f5e" stopOpacity={0} />
+                                </linearGradient>
+                                <linearGradient id="colorSleep" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.2} />
+                                    <stop offset="95%" stopColor="#06b6d4" stopOpacity={0} />
+                                </linearGradient>
+                                <linearGradient id="colorMood" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.2} />
                                     <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                                </linearGradient>
+                                <linearGradient id="colorMobility" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.2} />
+                                    <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
                                 </linearGradient>
                             </defs>
                             <XAxis
@@ -124,6 +195,7 @@ export default function PatientDashboard({ lastCheckIn, insights, averages, logs
                                 axisLine={false}
                                 tickLine={false}
                                 tick={{ fill: '#94a3b8', fontSize: 12 }}
+                                domain={[0, 12]}
                             />
                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                             <Tooltip
@@ -132,7 +204,10 @@ export default function PatientDashboard({ lastCheckIn, insights, averages, logs
                                 labelStyle={{ color: '#94a3b8', marginBottom: '0.5rem' }}
                             />
                             <Area type="monotone" dataKey="tremor_severity" stroke="#14b8a6" strokeWidth={3} fillOpacity={1} fill="url(#colorTremor)" name="Tremor" />
-                            <Area type="monotone" dataKey="stiffness_severity" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#colorStiffness)" name="Stiffness" />
+                            <Area type="monotone" dataKey="stiffness_severity" stroke="#f43f5e" strokeWidth={3} fillOpacity={1} fill="url(#colorStiffness)" name="Stiffness" />
+                            <Area type="monotone" dataKey="sleep_hours" stroke="#06b6d4" strokeWidth={3} fillOpacity={1} fill="url(#colorSleep)" name="Sleep (Hrs)" />
+                            <Area type="monotone" dataKey="mood_score" stroke="#6366f1" strokeWidth={3} fillOpacity={1} fill="url(#colorMood)" name="Mood" />
+                            <Area type="monotone" dataKey="mobility_score" stroke="#f59e0b" strokeWidth={3} fillOpacity={1} fill="url(#colorMobility)" name="Mobility" />
                         </AreaChart>
                     </ResponsiveContainer>
                 </div>

@@ -44,7 +44,7 @@ const Sidebar = ({ isOpen, onClose }: { isOpen?: boolean; onClose?: () => void }
         { icon: TrendingUp, label: 'Analytics', href: '/dashboard/trends' },
         { icon: FileText, label: 'Export Data', href: '/dashboard/reports' },
         { icon: Users, label: 'Network', href: '/dashboard/caregivers' },
-        { icon: Settings, label: 'Compliance', href: '/dashboard/settings' },
+
     ];
 
     const caregiverMenu = [
@@ -52,7 +52,7 @@ const Sidebar = ({ isOpen, onClose }: { isOpen?: boolean; onClose?: () => void }
         { icon: Users, label: 'Patient Matrix', href: '/dashboard/caregivers' },
         { icon: TrendingUp, label: 'Clinical Trends', href: '/dashboard/trends' },
         { icon: FileText, label: 'Medical Reports', href: '/dashboard/reports' },
-        { icon: Settings, label: 'Configuration', href: '/dashboard/settings' },
+
     ];
 
     const menuItems = user?.role === 'caregiver' ? caregiverMenu : patientMenu;

@@ -21,10 +21,10 @@ export default function AdminPage() {
     const [selectedPatient, setSelectedPatient] = useState<any>(null);
     const [patientDetails, setPatientDetails] = useState<any>(null);
     const [detailLoading, setDetailLoading] = useState(false);
-    const [detailTab, setDetailTab] = useState<'audit' | 'compliance' | 'network'>('audit');
+    const [detailTab, setDetailTab] = useState<'audit' | 'care_team'>('audit');
     const [caregivers, setCaregivers] = useState<any[]>([]);
     const [auditLogs, setAuditLogs] = useState<any[]>([]);
-    const [activeTab, setActiveTab] = useState<'patients' | 'caregivers' | 'logs' | 'compliance' | 'network'>('patients');
+    const [activeTab, setActiveTab] = useState<'patients' | 'caregivers' | 'logs'>('patients');
     const [loading, setLoading] = useState(true);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
@@ -46,7 +46,10 @@ export default function AdminPage() {
                     api.admin.getSystemHealth()
                 ]);
 
-                if (patientsRes && patientsRes.patients) setPatients(patientsRes.patients);
+                if (patientsRes && patientsRes.patients) {
+                    console.log("DEBUG: Received patients:", patientsRes.patients);
+                    setPatients(patientsRes.patients);
+                }
                 if (healthRes) {
                     setHealthData(healthRes);
                     setStats({
@@ -131,7 +134,7 @@ export default function AdminPage() {
 
                     <div className="flex items-center space-x-8">
                         <nav className="hidden lg:flex items-center space-x-2 bg-white/5 p-1 rounded-xl border border-white/5">
-                            {(['patients', 'caregivers', 'logs', 'compliance', 'network'] as const).map((tab) => (
+                            {(['patients', 'caregivers', 'logs'] as const).map((tab) => (
                                 <button
                                     key={tab}
                                     onClick={() => { setActiveTab(tab); setSelectedPatient(null); }}
@@ -165,16 +168,16 @@ export default function AdminPage() {
 
             <main className="max-w-[1600px] mx-auto p-8 space-y-10">
                 {/* Real-time Status Row */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     <AdminStatCard label="Total Patients" value={stats.totalPatients.toString()} icon={<Users size={20} />} trend="+5.2%" color="teal" />
                     <AdminStatCard label="Caregiver Network" value={stats.activeCaregivers.toString()} icon={<BriefcaseMedical size={20} />} trend="Stable" color="cyan" />
                     <AdminStatCard label="Diagnostic Blocks" value={stats.totalLogs.toString()} icon={<Activity size={20} />} trend="+124 today" color="emerald" />
-                    <AdminStatCard label="System Integrity" value={stats.systemHealth} icon={<Shield size={20} />} trend="99.9% Uptime" color="indigo" />
+
                 </div>
 
-                <div className="grid grid-cols-1 xl:grid-cols-4 gap-10">
+                <div className="space-y-10">
                     {/* Main Content Area */}
-                    <div className="xl:col-span-3 space-y-10">
+                    <div className="space-y-10">
                         {activeTab === 'patients' && !selectedPatient && (
                             <Card className="bg-[#0f1117] border-white/5 p-8" hover={false}>
                                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
@@ -215,7 +218,7 @@ export default function AdminPage() {
                                                     </td>
                                                 </tr>
                                             ) : (
-                                                patients.map((patient) => (
+                                                patients.filter(p => (p.role === 'patient' || !p.role) && !p.full_name?.toLowerCase().includes('caretaker') && !p.email?.toLowerCase().includes('caretaker')).map((patient) => (
                                                     <tr key={patient.id} className="group hover:bg-white/5 transition-colors">
                                                         <td className="py-6 pl-8">
                                                             <div className="flex items-center space-x-4">
@@ -281,8 +284,7 @@ export default function AdminPage() {
                                     <div className="flex bg-white/5 p-1 rounded-xl border border-white/5">
                                         {[
                                             { id: 'audit', label: 'Audit Stream', icon: <Activity size={14} /> },
-                                            { id: 'compliance', label: 'Compliance', icon: <Shield size={14} /> },
-                                            { id: 'network', label: 'Network', icon: <Share2 size={14} /> }
+                                            { id: 'care_team', label: 'Care Team', icon: <BriefcaseMedical size={14} /> }
                                         ].map((tab) => (
                                             <button
                                                 key={tab.id}
@@ -318,7 +320,7 @@ export default function AdminPage() {
                                         <div className="space-y-6 border-t border-white/5 pt-8">
                                             <DetailItem label="Clinical Status" value={selectedPatient.status} />
                                             <DetailItem label="Assigned Doctor" value={selectedPatient.doctor_name} />
-                                            <DetailItem label="Contact Point" value={selectedPatient.phone} />
+
                                             <DetailItem label="Account Created" value={new Date(selectedPatient.created_at).toLocaleDateString()} />
                                         </div>
 
@@ -370,59 +372,10 @@ export default function AdminPage() {
                                             </>
                                         )}
 
-                                        {detailTab === 'compliance' && (
+                                        {detailTab === 'care_team' && (
                                             <div className="space-y-8">
                                                 <h3 className="text-xl font-black text-white tracking-tight flex items-center">
-                                                    <Shield size={20} className="mr-3 text-indigo-500" /> Compliance Metrics
-                                                </h3>
-
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                    <div className="p-6 bg-white/[0.02] border border-white/5 rounded-2xl">
-                                                        <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">Check-in Consistency</div>
-                                                        <div className="text-3xl font-black text-white mb-2">94.2%</div>
-                                                        <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
-                                                            <div className="h-full bg-indigo-500 w-[94.2%]" />
-                                                        </div>
-                                                        <p className="text-[10px] text-slate-600 mt-4 font-bold uppercase tracking-tighter">Last 30 Days Transmission Yield</p>
-                                                    </div>
-                                                    <div className="p-6 bg-white/[0.02] border border-white/5 rounded-2xl">
-                                                        <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">Medication Adherence</div>
-                                                        <div className="text-3xl font-black text-emerald-500 mb-2">Excellent</div>
-                                                        <div className="flex space-x-1 mt-4">
-                                                            {[1, 1, 1, 1, 0, 1, 1].map((v, i) => (
-                                                                <div key={i} className={cn("flex-1 h-3 rounded-sm", v ? "bg-emerald-500/40" : "bg-red-500/20")} />
-                                                            ))}
-                                                        </div>
-                                                        <p className="text-[10px] text-slate-600 mt-4 font-bold uppercase tracking-tighter">Weekly Ingestion Confirmation Matrix</p>
-                                                    </div>
-                                                </div>
-
-                                                <div className="p-8 border border-white/5 bg-white/[0.01] rounded-3xl">
-                                                    <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-6">Automated Compliance Report</h4>
-                                                    <ul className="space-y-4">
-                                                        {[
-                                                            { label: 'Biometric Drift', value: 'Nominal (< 2%)', status: 'pass' },
-                                                            { label: 'Required Logs', value: '42 / 45', status: 'pass' },
-                                                            { label: 'Security Handshake', value: 'Verified', status: 'pass' },
-                                                            { label: 'Clinical Response', value: 'Delayed (3h)', status: 'warn' }
-                                                        ].map((item, i) => (
-                                                            <li key={i} className="flex justify-between items-center text-xs">
-                                                                <span className="text-slate-400 font-bold">{item.label}</span>
-                                                                <div className="flex items-center space-x-3">
-                                                                    <span className="text-white font-black">{item.value}</span>
-                                                                    <div className={cn("w-1.5 h-1.5 rounded-full", item.status === 'pass' ? "bg-emerald-500" : "bg-orange-500")} />
-                                                                </div>
-                                                            </li>
-                                                        ))}
-                                                    </ul>
-                                                </div>
-                                            </div>
-                                        )}
-
-                                        {detailTab === 'network' && (
-                                            <div className="space-y-8">
-                                                <h3 className="text-xl font-black text-white tracking-tight flex items-center">
-                                                    <Share2 size={20} className="mr-3 text-cyan-500" /> Caregiver Network Matrix
+                                                    <BriefcaseMedical size={20} className="mr-3 text-cyan-500" /> Caregiver Assignment
                                                 </h3>
 
                                                 {!patientDetails?.assignments?.length ? (
@@ -438,38 +391,51 @@ export default function AdminPage() {
                                                         </Button>
                                                     </div>
                                                 ) : (
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                        {patientDetails.assignments.map((assign: any) => (
-                                                            <div key={assign.id} className="p-6 bg-white/[0.02] border border-white/5 rounded-2xl hover:bg-white/[0.04] transition-all">
-                                                                <div className="flex items-center space-x-4 mb-6">
-                                                                    <div className="w-12 h-12 rounded-xl bg-cyan-500/10 text-cyan-500 flex items-center justify-center font-black">
-                                                                        {assign.caregiver?.full_name?.charAt(0)}
+                                                    <div className="grid grid-cols-1 gap-6">
+                                                        <div className="flex justify-end">
+                                                            <Button
+                                                                onClick={() => setIsAssignModalOpen(true)}
+                                                                variant="dark"
+                                                                className="bg-cyan-600/20 hover:bg-cyan-600/40 text-cyan-500 font-black text-[10px] uppercase tracking-widest px-6 py-2 rounded-xl border border-cyan-600/20"
+                                                            >
+                                                                + Add Caretaker
+                                                            </Button>
+                                                        </div>
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                            {patientDetails.assignments.map((assign: any) => (
+                                                                <div key={assign.id} className="p-6 bg-white/[0.02] border border-white/5 rounded-2xl hover:bg-white/[0.04] transition-all">
+                                                                    <div className="flex items-center space-x-4 mb-6">
+                                                                        <div className="w-12 h-12 rounded-xl bg-cyan-500/10 text-cyan-500 flex items-center justify-center font-black">
+                                                                            {assign.caregiver?.full_name?.charAt(0)}
+                                                                        </div>
+                                                                        <div>
+                                                                            <div className="font-black text-white tracking-tight">{assign.caregiver?.full_name}</div>
+                                                                            <div className="text-[10px] text-slate-500 font-mono italic uppercase">Certified Tech</div>
+                                                                        </div>
                                                                     </div>
-                                                                    <div>
-                                                                        <div className="font-black text-white tracking-tight">{assign.caregiver?.full_name}</div>
-                                                                        <div className="text-[10px] text-slate-500 font-mono italic uppercase">Certified Tech</div>
+                                                                    <div className="space-y-3">
+                                                                        <div className="flex justify-between text-[10px]">
+                                                                            <span className="text-slate-600 font-black uppercase">Role</span>
+                                                                            <span className="text-cyan-400 font-bold uppercase">{assign.assignment_notes || 'Primary care'}</span>
+                                                                        </div>
+                                                                        <div className="flex justify-between text-[10px]">
+                                                                            <span className="text-slate-600 font-black uppercase">Linked Since</span>
+                                                                            <span className="text-slate-300 font-mono">{new Date(assign.created_at).toLocaleDateString()}</span>
+                                                                        </div>
+                                                                        <div className="flex justify-between text-[10px]">
+                                                                            <span className="text-slate-600 font-black uppercase">Access</span>
+                                                                            <span className="text-emerald-500 font-bold uppercase">Active</span>
+                                                                        </div>
                                                                     </div>
                                                                 </div>
-                                                                <div className="space-y-3">
-                                                                    <div className="flex justify-between text-[10px]">
-                                                                        <span className="text-slate-600 font-black uppercase">Role</span>
-                                                                        <span className="text-cyan-400 font-bold uppercase">{assign.assignment_notes || 'Primary care'}</span>
-                                                                    </div>
-                                                                    <div className="flex justify-between text-[10px]">
-                                                                        <span className="text-slate-600 font-black uppercase">Linked Since</span>
-                                                                        <span className="text-slate-300 font-mono">{new Date(assign.created_at).toLocaleDateString()}</span>
-                                                                    </div>
-                                                                    <div className="flex justify-between text-[10px]">
-                                                                        <span className="text-slate-600 font-black uppercase">Access</span>
-                                                                        <span className="text-emerald-500 font-bold uppercase">Active</span>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        ))}
+                                                            ))}
+                                                        </div>
                                                     </div>
                                                 )}
                                             </div>
                                         )}
+
+
                                     </Card>
                                 </div>
                             </div>
@@ -500,7 +466,7 @@ export default function AdminPage() {
                                                 <th className="py-5">Access Level</th>
                                                 <th className="py-5">Last Link</th>
                                                 <th className="py-5">Created</th>
-                                                <th className="py-5 pr-8 text-right">Ops</th>
+
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-white/5">
@@ -515,7 +481,7 @@ export default function AdminPage() {
                                                         <td className="py-6"><span className="px-3 py-1 bg-cyan-500/10 text-cyan-400 rounded-full text-[10px] font-black uppercase tracking-widest border border-cyan-500/20">Standard Access</span></td>
                                                         <td className="py-6 text-xs text-slate-400 font-mono">{c.last_login ? new Date(c.last_login).toLocaleString() : 'Never'}</td>
                                                         <td className="py-6 text-xs text-slate-500 font-mono">{new Date(c.created_at).toLocaleDateString()}</td>
-                                                        <td className="py-6 pr-8 text-right"><button className="p-2 text-slate-600 hover:text-white"><div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center"><UserCog size={16} /></div></button></td>
+
                                                     </tr>
                                                 ))
                                             )}
@@ -568,92 +534,11 @@ export default function AdminPage() {
                             </Card>
                         )}
 
-                        {activeTab === 'compliance' && (
-                            <div className="space-y-8">
-                                <Card className="bg-[#0f1117] border-white/5 p-8" hover={false}>
-                                    <div className="mb-10">
-                                        <h2 className="text-3xl font-black text-white tracking-tight mb-2">Security & Compliance Ledger</h2>
-                                        <p className="text-slate-500 font-medium tracking-tight">System-wide regulatory status and cryptographic health.</p>
-                                    </div>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                        <Card className="bg-gradient-to-br from-indigo-600 to-indigo-900 border-none p-8 text-white relative overflow-hidden" hover={false}>
-                                            <div className="absolute top-0 right-0 p-4 opacity-10">
-                                                <Shield size={120} />
-                                            </div>
-                                            <div className="relative z-10">
-                                                <h3 className="text-xl font-black mb-4 tracking-tight">Security Protocol</h3>
-                                                <p className="text-indigo-100 text-xs font-medium leading-relaxed mb-8 opacity-80">
-                                                    Global administrative actions are currently cryptographically signed (HMAC-SHA256).
-                                                </p>
-                                                <button className="w-full py-4 bg-white/20 hover:bg-white/30 backdrop-blur-md rounded-2xl text-[10px] font-black uppercase tracking-[0.3em] transition-all border border-white/10">
-                                                    Rotate Global Keys
-                                                </button>
-                                            </div>
-                                        </Card>
-                                        <div className="space-y-6">
-                                            {[
-                                                { label: 'HIPAA Compliance', status: 'Certified', date: 'Jan 2026' },
-                                                { label: 'Data Sovereignty', status: 'Enforced', date: 'Real-time' },
-                                                { label: 'Audit Trail Persistence', status: '99.9%', date: 'Continuous' }
-                                            ].map((row, i) => (
-                                                <div key={i} className="flex justify-between items-center p-4 bg-white/[0.02] border border-white/5 rounded-2xl">
-                                                    <span className="text-xs font-bold text-slate-400">{row.label}</span>
-                                                    <div className="text-right">
-                                                        <div className="text-[10px] font-black text-teal-500 uppercase tracking-widest">{row.status}</div>
-                                                        <div className="text-[8px] text-slate-600 font-mono">{row.date}</div>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </Card>
-                            </div>
-                        )}
 
-                        {activeTab === 'network' && (
-                            <Card className="bg-[#0f1117] border-white/5 p-8" hover={false}>
-                                <div className="mb-10">
-                                    <h2 className="text-3xl font-black text-white tracking-tight mb-2">Infrastructure Matrix</h2>
-                                    <p className="text-slate-500 font-medium tracking-tight">Real-time telemetry from all clinical data nodes and routing engines.</p>
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                    <div className="space-y-6">
-                                        <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-4">Core Service Cluster</h4>
-                                        <ServiceStatus label="Core Database" status={healthData?.services?.database || 'Pending'} speed="12ms" />
-                                        <ServiceStatus label="Auth Engine" status={healthData?.services?.authentication || 'Active'} speed="4ms" />
-                                        <ServiceStatus label="Email Relay" status={healthData?.services?.email || 'Connected'} speed="85ms" />
-                                        <ServiceStatus label="Neural API" status="Nominal" speed="22ms" />
-                                    </div>
-                                    <div className="p-8 bg-white/[0.02] border border-white/5 rounded-[32px] flex flex-col justify-center">
-                                        <div className="text-center space-y-4">
-                                            <div className="text-6xl font-black text-white font-mono tracking-tighter">14.2%</div>
-                                            <div className="text-xs font-black text-slate-500 uppercase tracking-[0.2em]">Global Network Load</div>
-                                            <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden mt-8">
-                                                <div className="h-full bg-gradient-to-r from-teal-500 to-cyan-500 w-[14.2%]" />
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </Card>
-                        )}
+
+
                     </div>
 
-                    {/* Right Column: Global Stats Overview */}
-                    <div className="space-y-8">
-                        <Card className="bg-[#0f1117] border-white/5 p-8" hover={false}>
-                            <h3 className="text-sm font-black text-slate-500 uppercase tracking-[0.25em] mb-8">System Summary</h3>
-                            <div className="space-y-4">
-                                <div className="flex justify-between items-center text-xs font-bold">
-                                    <span className="text-slate-500">Uptime</span>
-                                    <span className="text-emerald-500">99.98%</span>
-                                </div>
-                                <div className="flex justify-between items-center text-xs font-bold">
-                                    <span className="text-slate-500">Sync Capacity</span>
-                                    <span className="text-teal-500">Optimized</span>
-                                </div>
-                            </div>
-                        </Card>
-                    </div>
                 </div>
             </main>
 

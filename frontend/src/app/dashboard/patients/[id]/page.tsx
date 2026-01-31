@@ -128,16 +128,16 @@ export default function PatientDetailPage() {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 lg:w-96">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:w-96">
                     <QuickActionCard
                         label="View Trends"
-                        icon={<TrendingUp size={24} />}
+                        icon={<TrendingUp size={20} />}
                         href={`/dashboard/trends?u=${patientId}`}
                         color="teal"
                     />
                     <QuickActionCard
                         label="Generate PDF"
-                        icon={<FileText size={24} />}
+                        icon={<FileText size={20} />}
                         href={`/dashboard/reports?u=${patientId}`}
                         color="cyan"
                     />
@@ -235,34 +235,7 @@ export default function PatientDetailPage() {
                 <div className="space-y-10">
                     <h2 className="text-2xl font-black text-slate-900 tracking-tight">Node <span className="text-slate-400 italic font-serif font-light">Context</span></h2>
 
-                    <Card className="bg-slate-900 text-white border-none p-10 relative overflow-hidden" hover={false}>
-                        <div className="absolute top-0 right-0 p-8 opacity-5">
-                            <Stethoscope size={100} />
-                        </div>
-                        <div className="relative z-10">
-                            <h4 className="text-xs font-black uppercase tracking-[0.2em] text-teal-400 mb-8 border-b border-white/10 pb-4">Clinical Regimen</h4>
-                            <div className="space-y-6">
-                                <div>
-                                    <div className="text-[10px] font-black uppercase text-slate-500 mb-2">Primary Medications</div>
-                                    <p className="text-sm font-medium leading-relaxed">{patient.current_medications || 'None specified'}</p>
-                                </div>
-                                <div>
-                                    <div className="text-[10px] font-black uppercase text-slate-500 mb-2">Known Allergies</div>
-                                    <p className="text-sm font-medium text-rose-400">{patient.allergies || 'No allergies logged'}</p>
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <div className="text-[10px] font-black uppercase text-slate-500 mb-2">Physician</div>
-                                        <p className="text-xs font-bold">{patient.doctor_name || 'Unassigned'}</p>
-                                    </div>
-                                    <div>
-                                        <div className="text-[10px] font-black uppercase text-slate-500 mb-2">Emergency Hub</div>
-                                        <p className="text-xs font-bold">{patient.emergency_contact || 'None set'}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </Card>
+
 
                     <Card className="bg-white/50 border border-white p-8 shadow-premium" hover={false}>
                         <div className="flex items-center space-x-3 text-slate-400 font-black text-[10px] uppercase tracking-widest mb-6 border-b border-slate-100 pb-4">
@@ -288,7 +261,7 @@ function QuickActionCard({ label, icon, href, color }: { label: string, icon: Re
     return (
         <Link href={href}>
             <div className={cn(
-                "h-full p-6 text-white rounded-[24px] transition-all hover:-translate-y-1 shadow-xl flex flex-col justify-between group",
+                "h-full p-4 text-white rounded-[24px] transition-all hover:-translate-y-1 shadow-xl flex flex-col justify-between group",
                 colors[color]
             )}>
                 <div className="mb-4 group-hover:rotate-6 transition-transform w-fit">{icon}</div>

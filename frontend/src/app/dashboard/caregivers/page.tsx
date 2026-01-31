@@ -91,7 +91,7 @@ export default function CaregiversPage() {
                         <span>{role === 'patient' ? 'Unified Clinical Network' : 'Global Patient Matrix'}</span>
                     </div>
                     <h1 className="text-5xl font-black text-slate-900 tracking-tighter">
-                        {role === 'patient' ? 'Care' : 'Node'} <span className="text-slate-400 italic font-serif font-light">{role === 'patient' ? 'Partners' : 'Orchestration'}</span>
+                        {role === 'patient' ? 'Care' : 'Patient'} <span className="text-slate-400 italic font-serif font-light">{role === 'patient' ? 'Partners' : 'Matrix'}</span>
                     </h1>
                 </div>
 
@@ -214,7 +214,7 @@ function PatientMatrixCard({ patient }: { patient: any }) {
 
                     <div className="flex items-center space-x-3">
                         <Link href={`/dashboard/patients/${patient.id}`}>
-                            <Button variant="dark" className="px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest">Node Analysis</Button>
+                            <Button variant="dark" className="px-6 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest">View Log</Button>
                         </Link>
                         <div className="flex items-center space-x-1">
                             <Link href={`/dashboard/trends?u=${patient.id}`} title="Trends">
@@ -274,14 +274,7 @@ function CaregiverMatrixCard({ assignment }: { assignment: any }) {
                         </div>
                     </div>
 
-                    <div className="flex space-x-3">
-                        <button
-                            onClick={() => (window as any).location.href = `mailto:${caregiver.email}`}
-                            className="px-8 py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-slate-900/10"
-                        >
-                            Establish Comms
-                        </button>
-                    </div>
+
                 </div>
             </div>
         </Card>

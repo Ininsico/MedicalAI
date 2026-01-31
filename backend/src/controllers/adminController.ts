@@ -298,7 +298,8 @@ export const getAllPatients = async (req: Request, res: Response) => {
                 contact_number: clinical?.contact_number || user.phone,
                 doctor_name: clinical?.doctor_name || primaryCaregiver || 'Unassigned',
                 caregiver_count: assignments.length,
-                is_active: user.is_active
+                is_active: user.is_active,
+                role: user.role
             };
         });
 

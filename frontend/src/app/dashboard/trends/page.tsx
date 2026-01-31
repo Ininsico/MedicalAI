@@ -36,6 +36,7 @@ function TrendsContent() {
     const [data, setData] = useState<any[]>([]);
     const [role, setRole] = useState<'patient' | 'caregiver'>('patient');
     const [patientInfo, setPatientInfo] = useState<any>(null);
+    const [assignments, setAssignments] = useState<any[]>([]);
 
     useEffect(() => {
         async function fetchData() {
@@ -47,10 +48,31 @@ function TrendsContent() {
                 setRole(user.role);
 
                 let logs = [];
-                if (user.role === 'caregiver' && patientId) {
-                    const res = await api.caregiver.getPatientLogs(patientId);
-                    logs = res.logs || [];
-                    setPatientInfo(res.patient);
+                if (user.role === 'caregiver') {
+                    let targetId = patientId;
+                    let fetchedAssignments: any[] = [];
+
+                    // Fetch assignments to populate dropdown list
+                    try {
+                        const dashboard = await api.caregiver.getDashboard();
+                        if (dashboard?.assignments) {
+                            fetchedAssignments = dashboard.assignments;
+                            setAssignments(fetchedAssignments);
+                        }
+                    } catch (err) {
+                        console.error("Failed to fetch assignments", err);
+                    }
+
+                    // If no patient ID in URL, find the first assigned patient
+                    if (!targetId && fetchedAssignments.length > 0) {
+                        targetId = fetchedAssignments[0].patient.id;
+                    }
+
+                    if (targetId) {
+                        const res = await api.caregiver.getPatientLogs(targetId);
+                        logs = res.logs || [];
+                        setPatientInfo(res.patient);
+                    }
                 } else {
                     logs = await api.patient.getLogs(user.id);
                 }
@@ -68,12 +90,19 @@ function TrendsContent() {
                             case 'bad': moodVal = 1; break;
                         }
 
+                        let mobVal = 5;
+                        const a = log.activity_level?.toLowerCase();
+                        if (a === 'high' || a === 'very active') mobVal = 9;
+                        else if (a === 'moderate') mobVal = 6;
+                        else if (a === 'low' || a === 'sedentary') mobVal = 3;
+
                         return {
                             date: new Date(log.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
                             tremor: log.tremor_severity || 0,
                             stiffness: log.stiffness_severity || 0,
                             sleep: log.sleep_hours || 0,
                             mood: moodVal,
+                            mobility: mobVal,
                             medication: log.medication_taken ? 10 : 0
                         };
                     });
@@ -96,9 +125,41 @@ function TrendsContent() {
                         <TrendingUp size={14} />
                         <span>Longitudinal Data Stream</span>
                     </div>
-                    <h1 className="text-5xl font-black text-slate-900 tracking-tighter">
-                        {patientId && patientInfo ? patientInfo.full_name : 'Symptom'} <span className="text-slate-400 italic font-serif font-light">{patientId && patientInfo ? 'Trends' : 'Trajectory'}</span>
-                    </h1>
+                    <div className="flex items-center space-x-4">
+                        <h1 className="text-5xl font-black text-slate-900 tracking-tighter">
+                            {patientInfo ? patientInfo.full_name : 'Symptom'} <span className="text-slate-400 italic font-serif font-light">{patientInfo ? 'Trends' : 'Trajectory'}</span>
+                        </h1>
+                        {role === 'caregiver' && assignments.length > 0 && (
+                            <div className="relative">
+                                <select
+                                    className="appearance-none bg-white/50 border border-white pl-4 pr-10 py-2 rounded-xl text-sm font-bold text-slate-600 focus:outline-none focus:ring-2 focus:ring-teal-500/20 shadow-premium backdrop-blur-xl cursor-pointer"
+                                    onChange={(e) => {
+                                        const pid = e.target.value;
+                                        // Update URL without full reload if possible, or trigger refetch
+                                        // For simplicity, let's just trigger a refetch by updating state and URL 
+                                        const newUrl = new URL(window.location.href);
+                                        newUrl.searchParams.set('u', pid);
+                                        window.history.pushState({}, '', newUrl.toString());
+                                        // Force re-execution of effect by updating searchParams visually or just creating a local state trigger
+                                        // Actually the effect depends on [range, patientId]. 
+                                        // We can't easily force the searchParams hook to update without navigation.
+                                        // So we'll use window.location.assign or router.push 
+                                        window.location.href = `/dashboard/trends?u=${pid}`;
+                                    }}
+                                    value={patientInfo?.id || ''}
+                                >
+                                    {assignments.map((a: any) => (
+                                        <option key={a.patient.id} value={a.patient.id}>
+                                            {a.patient.full_name}
+                                        </option>
+                                    ))}
+                                </select>
+                                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                                    <Filter size={14} />
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 <div className="flex items-center space-x-6">
@@ -165,6 +226,18 @@ function TrendsContent() {
                                                     <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.1} />
                                                     <stop offset="95%" stopColor="#f43f5e" stopOpacity={0} />
                                                 </linearGradient>
+                                                <linearGradient id="colorSleep" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1} />
+                                                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                                                </linearGradient>
+                                                <linearGradient id="colorMood" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.1} />
+                                                    <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
+                                                </linearGradient>
+                                                <linearGradient id="colorMobility" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.1} />
+                                                    <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
+                                                </linearGradient>
                                             </defs>
                                             <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                                             <XAxis
@@ -186,8 +259,9 @@ function TrendsContent() {
                                             <Area
                                                 type="monotone"
                                                 dataKey="tremor"
+                                                name="Tremor"
                                                 stroke="#14b8a6"
-                                                strokeWidth={4}
+                                                strokeWidth={3}
                                                 fillOpacity={1}
                                                 fill="url(#colorTremor)"
                                                 activeDot={{ r: 6, fill: '#14b8a6', stroke: '#fff', strokeWidth: 2 }}
@@ -195,11 +269,42 @@ function TrendsContent() {
                                             <Area
                                                 type="monotone"
                                                 dataKey="stiffness"
+                                                name="Stiffness"
                                                 stroke="#f43f5e"
-                                                strokeWidth={4}
+                                                strokeWidth={3}
                                                 fillOpacity={1}
                                                 fill="url(#colorStiffness)"
                                                 activeDot={{ r: 6, fill: '#f43f5e', stroke: '#fff', strokeWidth: 2 }}
+                                            />
+                                            <Area
+                                                type="monotone"
+                                                dataKey="sleep"
+                                                name="Sleep (Hrs)"
+                                                stroke="#3b82f6"
+                                                strokeWidth={3}
+                                                fillOpacity={1}
+                                                fill="url(#colorSleep)"
+                                                activeDot={{ r: 6, fill: '#3b82f6', stroke: '#fff', strokeWidth: 2 }}
+                                            />
+                                            <Area
+                                                type="monotone"
+                                                dataKey="mood"
+                                                name="Mood Scale"
+                                                stroke="#8b5cf6"
+                                                strokeWidth={3}
+                                                fillOpacity={1}
+                                                fill="url(#colorMood)"
+                                                activeDot={{ r: 6, fill: '#8b5cf6', stroke: '#fff', strokeWidth: 2 }}
+                                            />
+                                            <Area
+                                                type="monotone"
+                                                dataKey="mobility"
+                                                name="Mobility"
+                                                stroke="#f59e0b"
+                                                strokeWidth={3}
+                                                fillOpacity={1}
+                                                fill="url(#colorMobility)"
+                                                activeDot={{ r: 6, fill: '#f59e0b', stroke: '#fff', strokeWidth: 2 }}
                                             />
                                         </AreaChart>
                                     </ResponsiveContainer>
@@ -227,13 +332,18 @@ function TrendsContent() {
                                     </div>
                                     <h4 className="text-xl font-black mb-4 tracking-tight">Stability Index</h4>
                                     <p className="text-slate-400 text-sm font-medium leading-relaxed mb-8">
-                                        Your baseline has remained within a 15% variance threshold during this {range} day observation window.
+                                        Your condition has remained within nominal clinical thresholds for {data.length > 0 ? Math.round((data.filter(d => (d.tremor || 0) < 6 && (d.stiffness || 0) < 6).length / data.length) * 100) : 0}% of this {range}-day observation window.
                                     </p>
                                     <div className="flex items-center justify-between">
                                         <div className="h-2 w-32 bg-white/10 rounded-full overflow-hidden">
-                                            <div className="h-full bg-teal-500 w-[85%]" />
+                                            <div
+                                                className="h-full bg-teal-500 transition-all duration-1000"
+                                                style={{ width: `${data.length > 0 ? Math.round((data.filter(d => (d.tremor || 0) < 6 && (d.stiffness || 0) < 6).length / data.length) * 100) : 0}%` }}
+                                            />
                                         </div>
-                                        <span className="font-black text-teal-400 text-lg">85% Stable</span>
+                                        <span className="font-black text-teal-400 text-lg">
+                                            {data.length > 0 ? Math.round((data.filter(d => (d.tremor || 0) < 6 && (d.stiffness || 0) < 6).length / data.length) * 100) : 0}% Stable
+                                        </span>
                                     </div>
                                 </div>
                             </Card>
