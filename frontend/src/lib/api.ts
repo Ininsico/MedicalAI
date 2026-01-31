@@ -70,5 +70,9 @@ export const api = {
         getAssignments: () => request<any>('/admin/assignments', 'GET'),
         getAuditLogs: () => request<any>('/admin/audit-logs', 'GET'),
         getSystemHealth: () => request<any>('/admin/system/health', 'GET'),
+    },
+    ai: {
+        generateSummary: (patientId: string, startDate?: string, endDate?: string) =>
+            request<any>('/ai/summary', 'POST', { patientId, startDate, endDate }),
     }
 };

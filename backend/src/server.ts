@@ -13,6 +13,7 @@ import adminRoutes from './routes/adminRoutes';
 import caregiverRoutes from './routes/caregiverRoutes';
 import patientRoutes from './routes/patientRoutes';
 import notificationRoutes from './routes/notificationRoutes';
+import aiRoutes from './routes/aiRoutes';
 
 // Swagger documentation
 import swaggerUi from 'swagger-ui-express';
@@ -49,6 +50,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/caregiver', caregiverRoutes);
 app.use('/api/patients', patientRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/ai', aiRoutes);
 
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
