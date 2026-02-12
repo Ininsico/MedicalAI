@@ -1,3 +1,5 @@
+"use client";
+
 import React from 'react';
 import Link from 'next/link';
 import {
@@ -10,11 +12,12 @@ import {
     Pill,
     Smile,
     Move,
-    Circle
+    Sparkles,
+    Brain,
+    Zap,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
-import { AreaChart, Area, ResponsiveContainer, Tooltip, XAxis, YAxis, CartesianGrid } from 'recharts';
 
 interface PatientDashboardProps {
     lastCheckIn: any;
@@ -39,285 +42,382 @@ export default function PatientDashboard({ lastCheckIn, insights, averages, logs
 
     const mobilityScore = averages?.stiffness ? (10 - parseFloat(averages.stiffness)).toFixed(1) : '0.0';
 
+    const tremorValue = parseFloat(averages?.tremor || '0');
+    const stiffnessValue = parseFloat(averages?.stiffness || '0');
+    const sleepValue = parseFloat(averages?.sleep || '0');
+
     return (
-        <div className="space-y-6">
-            {/* Status Card */}
-            <div className="bg-[#181818] border border-gray-800 rounded-lg p-6">
-                <h3 className="text-base font-semibold text-white mb-4">Today's Status</h3>
+        <div className="relative">
+            {/* Animated background gradients */}
+            <div className="absolute -top-40 -right-40 w-96 h-96 bg-gradient-to-br from-teal-400/20 via-cyan-300/20 to-blue-400/20 rounded-full blur-3xl animate-pulse" />
+            <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-gradient-to-tr from-purple-400/20 via-pink-300/20 to-rose-400/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
 
-                {isToday ? (
-                    <div className="bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-lg">
-                        <div className="flex items-center text-emerald-400 font-medium text-sm mb-2">
-                            <CheckCircle2 size={18} className="mr-2" />
-                            Check-in Complete
-                        </div>
-                        <p className="text-gray-400 text-sm">Your health data has been recorded for today.</p>
-                    </div>
-                ) : (
-                    <div className="space-y-4">
-                        <div className="bg-orange-500/10 border border-orange-500/20 p-4 rounded-lg">
-                            <div className="flex items-center text-orange-400 font-medium text-sm mb-2">
-                                <AlertCircle size={18} className="mr-2" />
-                                Check-in Pending
+            <div className="relative space-y-6">
+                {/* Bento Grid Layout */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+                    {/* Hero Status Card - Large */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="lg:col-span-8 relative overflow-hidden group"
+                    >
+                        <div className={cn(
+                            "relative h-full rounded-3xl p-8 backdrop-blur-xl border shadow-2xl transition-all duration-500",
+                            isToday
+                                ? "bg-gradient-to-br from-emerald-500/90 via-teal-500/90 to-cyan-500/90 border-emerald-300/50"
+                                : "bg-gradient-to-br from-orange-500/90 via-amber-500/90 to-yellow-500/90 border-orange-300/50"
+                        )}>
+                            {/* Animated mesh gradient overlay */}
+                            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZGVmcz48cGF0dGVybiBpZD0iZ3JpZCIgd2lkdGg9IjQwIiBoZWlnaHQ9IjQwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cGF0aCBkPSJNIDQwIDAgTCAwIDAgMCA0MCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ3aGl0ZSIgc3Ryb2tlLW9wYWNpdHk9IjAuMSIgc3Ryb2tlLXdpZHRoPSIxIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyaWQpIi8+PC9zdmc+')] opacity-30" />
+
+                            <div className="relative z-10">
+                                <div className="flex items-center justify-between mb-6">
+                                    <div className="flex items-center space-x-3">
+                                        <div className="p-3 bg-white/20 backdrop-blur-xl rounded-2xl">
+                                            {isToday ? <CheckCircle2 size={28} className="text-white" /> : <AlertCircle size={28} className="text-white" />}
+                                        </div>
+                                        <div>
+                                            <h2 className="text-3xl font-black text-white tracking-tight">
+                                                {isToday ? "All Set for Today" : "Ready for Check-in?"}
+                                            </h2>
+                                            <p className="text-white/80 font-medium text-sm mt-1">
+                                                {isToday ? "Your daily health metrics are captured" : "Complete your health assessment now"}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* Animated pulse indicator */}
+                                    <motion.div
+                                        animate={{ scale: [1, 1.2, 1], opacity: [1, 0.5, 1] }}
+                                        transition={{ duration: 2, repeat: Infinity }}
+                                        className={cn(
+                                            "w-4 h-4 rounded-full",
+                                            isToday ? "bg-white shadow-lg shadow-white/50" : "bg-white shadow-lg shadow-white/50"
+                                        )}
+                                    />
+                                </div>
+
+                                {!isToday && (
+                                    <Link href="/dashboard/check-in">
+                                        <motion.button
+                                            whileHover={{ scale: 1.02, y: -2 }}
+                                            whileTap={{ scale: 0.98 }}
+                                            className="w-full py-4 px-6 bg-white text-orange-600 font-bold rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-300 flex items-center justify-center space-x-2 group"
+                                        >
+                                            <span>Start Daily Check-in</span>
+                                            <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+                                        </motion.button>
+                                    </Link>
+                                )}
+
+                                {isToday && (
+                                    <div className="flex items-center space-x-2 text-white/90 bg-white/10 backdrop-blur-sm px-4 py-3 rounded-xl border border-white/20">
+                                        <Sparkles size={18} />
+                                        <span className="font-semibold text-sm">Last recorded: {new Date(lastCheckIn.created_at || lastCheckIn.date).toLocaleTimeString()}</span>
+                                    </div>
+                                )}
                             </div>
-                            <p className="text-gray-400 text-sm">Please complete your daily health check-in.</p>
                         </div>
-                        <Link href="/dashboard/check-in">
-                            <button className="w-full py-3 bg-teal-600 hover:bg-teal-700 text-white font-medium rounded-lg transition-colors flex items-center justify-center">
-                                Start Check-in <ArrowRight size={18} className="ml-2" />
-                            </button>
-                        </Link>
-                    </div>
-                )}
-            </div>
+                    </motion.div>
 
-            {/* AI Insights */}
-            {insights && insights.length > 0 && (
-                <div className="space-y-3">
-                    <h3 className="text-base font-semibold text-white">AI Insights</h3>
-                    {insights.map((insight, index) => (
+                    {/* Quick Stats - 2 cards stacked */}
+                    <div className="lg:col-span-4 grid grid-cols-2 lg:grid-cols-1 gap-6">
+                        <CircularMetricCard
+                            label="Check-ins"
+                            value={logs?.length || 0}
+                            maxValue={30}
+                            icon={<Activity size={20} />}
+                            color="from-teal-500 to-cyan-500"
+                            delay={0.1}
+                        />
+                        <CircularMetricCard
+                            label="Mood"
+                            value={moodScore}
+                            maxValue={10}
+                            icon={<Smile size={20} />}
+                            color="from-purple-500 to-pink-500"
+                            delay={0.2}
+                            suffix="/10"
+                        />
+                    </div>
+
+                    {/* AI Insights - Horizontal scrollable */}
+                    {insights && insights.length > 0 && (
                         <motion.div
-                            key={index}
-                            initial={{ opacity: 0, y: 10 }}
+                            initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: index * 0.1 }}
-                            className="bg-[#181818] border border-cyan-500/20 p-4 rounded-lg flex items-start space-x-3"
+                            transition={{ delay: 0.3 }}
+                            className="lg:col-span-12 relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-500/10 via-purple-500/10 to-pink-500/10 backdrop-blur-xl border border-indigo-300/30 p-6 shadow-xl"
                         >
-                            <div className="p-2 bg-cyan-500/10 text-cyan-400 rounded-lg shrink-0">
-                                <Activity size={18} />
+                            <div className="flex items-center space-x-3 mb-4">
+                                <div className="p-2 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl">
+                                    <Brain size={20} className="text-white" />
+                                </div>
+                                <h3 className="text-xl font-black text-gray-900">AI Health Insights</h3>
+                                <div className="flex-1" />
+                                <Sparkles size={18} className="text-indigo-500 animate-pulse" />
                             </div>
-                            <div className="flex-1">
-                                <h4 className="text-sm font-medium text-white mb-1">Pattern Detected</h4>
-                                <p className="text-gray-400 text-sm">{insight}</p>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {insights.map((insight, index) => (
+                                    <motion.div
+                                        key={index}
+                                        initial={{ opacity: 0, x: -20 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        transition={{ delay: 0.4 + index * 0.1 }}
+                                        className="group p-4 bg-white/60 backdrop-blur-sm rounded-2xl border border-white/60 hover:border-indigo-300 hover:shadow-lg transition-all duration-300"
+                                    >
+                                        <div className="flex items-start space-x-3">
+                                            <div className="p-2 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-lg group-hover:scale-110 transition-transform">
+                                                <Zap size={16} className="text-indigo-600" />
+                                            </div>
+                                            <p className="text-sm font-medium text-gray-700 leading-relaxed flex-1">{insight}</p>
+                                        </div>
+                                    </motion.div>
+                                ))}
                             </div>
                         </motion.div>
-                    ))}
-                </div>
-            )}
+                    )}
 
-            {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <StatCard
-                    label="Total Check-ins"
-                    value={logs?.length || 0}
-                    icon={<Activity size={18} />}
-                    color="teal"
-                />
-                <StatCard
-                    label="Medication Adherence"
-                    value={`${medicationAdherence}%`}
-                    icon={<Pill size={18} />}
-                    color="emerald"
-                />
-                <StatCard
-                    label="Mood Score"
-                    value={`${moodScore}/10`}
-                    icon={<Smile size={18} />}
-                    color="indigo"
-                />
+                    {/* Core Health Metrics - Bento Style */}
+                    <GlassMorphCard
+                        className="lg:col-span-4"
+                        delay={0.4}
+                    >
+                        <MetricDisplay
+                            label="Tremor Intensity"
+                            value={tremorValue}
+                            maxValue={10}
+                            color="bg-gradient-to-br from-teal-500 to-emerald-500"
+                            icon={<Activity size={18} />}
+                            trend={tremorValue < 5 ? 'down' : 'up'}
+                        />
+                    </GlassMorphCard>
+
+                    <GlassMorphCard
+                        className="lg:col-span-4"
+                        delay={0.5}
+                    >
+                        <MetricDisplay
+                            label="Muscle Rigidity"
+                            value={stiffnessValue}
+                            maxValue={10}
+                            color="bg-gradient-to-br from-rose-500 to-pink-500"
+                            icon={<Activity size={18} />}
+                            trend={stiffnessValue < 5 ? 'down' : 'up'}
+                        />
+                    </GlassMorphCard>
+
+                    <GlassMorphCard
+                        className="lg:col-span-4"
+                        delay={0.6}
+                    >
+                        <MetricDisplay
+                            label="Sleep Quality"
+                            value={sleepValue}
+                            maxValue={12}
+                            color="bg-gradient-to-br from-cyan-500 to-blue-500"
+                            icon={<Activity size={18} />}
+                            trend="up"
+                            suffix="hrs"
+                        />
+                    </GlassMorphCard>
+
+                    {/* Bottom Row - Medication and Mobility */}
+                    <GlassMorphCard
+                        className="lg:col-span-6"
+                        delay={0.7}
+                    >
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center space-x-3">
+                                <div className="p-2 bg-gradient-to-br from-emerald-500 to-teal-500 rounded-xl">
+                                    <Pill size={20} className="text-white" />
+                                </div>
+                                <div>
+                                    <h4 className="text-sm font-bold text-gray-600">Medication Adherence</h4>
+                                    <p className="text-3xl font-black text-gray-900 mt-1">{medicationAdherence}%</p>
+                                </div>
+                            </div>
+                            <div className={cn(
+                                "px-3 py-1.5 rounded-full text-xs font-bold flex items-center space-x-1",
+                                medicationAdherence > 80 ? "bg-emerald-100 text-emerald-700" : "bg-orange-100 text-orange-700"
+                            )}>
+                                {medicationAdherence > 80 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+                                <span>{medicationAdherence > 80 ? 'Excellent' : 'Needs Attention'}</span>
+                            </div>
+                        </div>
+                        <div className="h-3 w-full bg-gray-200 rounded-full overflow-hidden">
+                            <motion.div
+                                initial={{ width: 0 }}
+                                animate={{ width: `${medicationAdherence}%` }}
+                                transition={{ duration: 1.5, ease: "easeOut" }}
+                                className="h-full bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full relative"
+                            >
+                                <div className="absolute inset-0 bg-white/30 animate-pulse" />
+                            </motion.div>
+                        </div>
+                    </GlassMorphCard>
+
+                    <GlassMorphCard
+                        className="lg:col-span-6"
+                        delay={0.8}
+                    >
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center space-x-3">
+                                <div className="p-2 bg-gradient-to-br from-amber-500 to-orange-500 rounded-xl">
+                                    <Move size={20} className="text-white" />
+                                </div>
+                                <div>
+                                    <h4 className="text-sm font-bold text-gray-600">Daily Mobility</h4>
+                                    <p className="text-3xl font-black text-gray-900 mt-1">{mobilityScore}</p>
+                                </div>
+                            </div>
+                            <div className="px-3 py-1.5 rounded-full text-xs font-bold flex items-center space-x-1 bg-amber-100 text-amber-700">
+                                <TrendingUp size={14} />
+                                <span>Active</span>
+                            </div>
+                        </div>
+                        <div className="h-3 w-full bg-gray-200 rounded-full overflow-hidden">
+                            <motion.div
+                                initial={{ width: 0 }}
+                                animate={{ width: `${(parseFloat(mobilityScore) / 10) * 100}%` }}
+                                transition={{ duration: 1.5, ease: "easeOut", delay: 0.2 }}
+                                className="h-full bg-gradient-to-r from-amber-500 to-orange-500 rounded-full relative"
+                            >
+                                <div className="absolute inset-0 bg-white/30 animate-pulse" />
+                            </motion.div>
+                        </div>
+                    </GlassMorphCard>
+                </div>
             </div>
+        </div>
+    );
+}
 
-            {/* Analytics Graph */}
-            <div className="bg-[#181818] border border-gray-800 rounded-lg p-6">
-                <div className="flex flex-col md:flex-row md:items-center justify-between mb-6">
-                    <div>
-                        <h3 className="text-base font-semibold text-white mb-1">Health Analytics</h3>
-                        <p className="text-sm text-gray-500">Track your health metrics over time</p>
-                    </div>
-                    <div className="flex flex-wrap gap-3 mt-4 md:mt-0">
-                        <LegendItem color="bg-teal-500" label="Tremor" />
-                        <LegendItem color="bg-rose-500" label="Stiffness" />
-                        <LegendItem color="bg-cyan-500" label="Sleep" />
+// Glassmorphic Card Component
+function GlassMorphCard({ children, className, delay = 0 }: { children: React.ReactNode, className?: string, delay?: number }) {
+    return (
+        <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay }}
+            className={cn(
+                "relative overflow-hidden rounded-3xl bg-white/60 backdrop-blur-xl border border-white/60 shadow-xl hover:shadow-2xl transition-all duration-300 p-6",
+                className
+            )}
+        >
+            {children}
+        </motion.div>
+    );
+}
+
+// Circular Metric Card with radial progress
+function CircularMetricCard({ label, value, maxValue, icon, color, delay, suffix = '' }: any) {
+    const percentage = (value / maxValue) * 100;
+    const circumference = 2 * Math.PI * 45;
+    const strokeDashoffset = circumference - (percentage / 100) * circumference;
+
+    return (
+        <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay }}
+            className="relative overflow-hidden rounded-3xl bg-white/60 backdrop-blur-xl border border-white/60 shadow-xl p-6 hover:shadow-2xl transition-all duration-300 group"
+        >
+            <div className="relative z-10">
+                <div className="flex items-center justify-between mb-3">
+                    <div className={cn("p-2 bg-gradient-to-br rounded-xl text-white", color)}>
+                        {icon}
                     </div>
                 </div>
 
-                <div className="h-[300px] w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart
-                            data={logs ? [...logs].reverse().map(log => ({
-                                ...log,
-                                sleep_hours: Number(log.sleep_hours) || 0
-                            })) : []}
-                            margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-                        >
+                {/* Circular Progress */}
+                <div className="flex items-center justify-center mb-3">
+                    <div className="relative w-24 h-24">
+                        <svg className="transform -rotate-90 w-24 h-24">
+                            <circle
+                                cx="48"
+                                cy="48"
+                                r="45"
+                                stroke="currentColor"
+                                strokeWidth="6"
+                                fill="none"
+                                className="text-gray-200"
+                            />
+                            <motion.circle
+                                cx="48"
+                                cy="48"
+                                r="45"
+                                stroke="url(#gradient)"
+                                strokeWidth="6"
+                                fill="none"
+                                strokeLinecap="round"
+                                initial={{ strokeDashoffset: circumference }}
+                                animate={{ strokeDashoffset }}
+                                transition={{ duration: 1.5, ease: "easeOut", delay: delay + 0.2 }}
+                                strokeDasharray={circumference}
+                            />
                             <defs>
-                                <linearGradient id="colorTremor" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#14b8a6" stopOpacity={0.3} />
-                                    <stop offset="95%" stopColor="#14b8a6" stopOpacity={0} />
-                                </linearGradient>
-                                <linearGradient id="colorStiffness" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.3} />
-                                    <stop offset="95%" stopColor="#f43f5e" stopOpacity={0} />
-                                </linearGradient>
-                                <linearGradient id="colorSleep" x1="0" y1="0" x2="0" y2="1">
-                                    <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.3} />
-                                    <stop offset="95%" stopColor="#06b6d4" stopOpacity={0} />
+                                <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" className={cn("stop-color", color.includes('teal') ? 'text-teal-500' : 'text-purple-500')} stopOpacity="1" />
+                                    <stop offset="100%" className={cn("stop-color", color.includes('teal') ? 'text-cyan-500' : 'text-pink-500')} stopOpacity="1" />
                                 </linearGradient>
                             </defs>
-                            <XAxis
-                                dataKey="date"
-                                axisLine={false}
-                                tickLine={false}
-                                tick={{ fill: '#6b7280', fontSize: 12 }}
-                                tickFormatter={(str) => new Date(str).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                            />
-                            <YAxis
-                                axisLine={false}
-                                tickLine={false}
-                                tick={{ fill: '#6b7280', fontSize: 12 }}
-                                domain={[0, 12]}
-                            />
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#374151" />
-                            <Tooltip
-                                contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px', color: '#fff' }}
-                                itemStyle={{ color: '#fff' }}
-                                labelStyle={{ color: '#9ca3af', marginBottom: '0.5rem' }}
-                            />
-                            <Area type="monotone" dataKey="tremor_severity" stroke="#14b8a6" strokeWidth={2} fillOpacity={1} fill="url(#colorTremor)" name="Tremor" />
-                            <Area type="monotone" dataKey="stiffness_severity" stroke="#f43f5e" strokeWidth={2} fillOpacity={1} fill="url(#colorStiffness)" name="Stiffness" />
-                            <Area type="monotone" dataKey="sleep_hours" stroke="#06b6d4" strokeWidth={2} fillOpacity={1} fill="url(#colorSleep)" name="Sleep (Hrs)" />
-                        </AreaChart>
-                    </ResponsiveContainer>
+                        </svg>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                            <span className="text-2xl font-black text-gray-900">{value}{suffix}</span>
+                        </div>
+                    </div>
                 </div>
-            </div>
 
-            {/* Metrics Grid */}
-            <div>
-                <h3 className="text-base font-semibold text-white mb-4">Health Metrics</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <MetricCard
-                        label="Tremor Intensity"
-                        value={averages?.tremor || '0.0'}
-                        trend="down"
-                        color="teal"
-                        icon={<Activity size={18} />}
-                    />
-                    <MetricCard
-                        label="Muscle Rigidity"
-                        value={averages?.stiffness || '0.0'}
-                        trend="up"
-                        color="rose"
-                        icon={<Activity size={18} />}
-                    />
-                    <MetricCard
-                        label="Sleep Hours"
-                        value={averages?.sleep || '0.0'}
-                        trend="up"
-                        color="cyan"
-                        icon={<Activity size={18} />}
-                    />
-                    <MetricCard
-                        label="Medication Adherence"
-                        value={`${medicationAdherence}%`}
-                        trend={medicationAdherence > 80 ? "up" : "down"}
-                        color="emerald"
-                        icon={<Pill size={18} />}
-                        isPercent
-                    />
-                    <MetricCard
-                        label="Mood Index"
-                        value={`${moodScore}/10`}
-                        trend={moodScore > 5 ? "up" : "down"}
-                        color="indigo"
-                        icon={<Smile size={18} />}
-                    />
-                    <MetricCard
-                        label="Daily Mobility"
-                        value={`${mobilityScore}`}
-                        trend="up"
-                        color="amber"
-                        icon={<Move size={18} />}
-                    />
-                </div>
+                <p className="text-center text-sm font-bold text-gray-600">{label}</p>
             </div>
-        </div>
+        </motion.div>
     );
 }
 
-function StatCard({ label, value, icon, color }: { label: string, value: any, icon: React.ReactNode, color: string }) {
-    const colorClasses: any = {
-        teal: { bg: 'bg-teal-500/10', text: 'text-teal-400', border: 'border-teal-500/20' },
-        emerald: { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/20' },
-        indigo: { bg: 'bg-indigo-500/10', text: 'text-indigo-400', border: 'border-indigo-500/20' },
-    };
-
-    const colors = colorClasses[color];
+// Metric Display with horizontal bar
+function MetricDisplay({ label, value, maxValue, color, icon, trend, suffix = '' }: any) {
+    const percentage = (value / maxValue) * 100;
+    const isGood = trend === 'down' && value < 5 || trend === 'up' && value > 5;
 
     return (
-        <div className="bg-[#181818] border border-gray-800 rounded-lg p-4">
-            <div className={cn("p-2 rounded-lg inline-flex mb-3", colors.bg, colors.text)}>
-                {icon}
-            </div>
-            <div className="space-y-1">
-                <div className="text-2xl font-bold text-white">{value}</div>
-                <div className="text-sm text-gray-500">{label}</div>
-            </div>
-        </div>
-    );
-}
-
-function LegendItem({ color, label }: { color: string, label: string }) {
-    return (
-        <div className="flex items-center space-x-2">
-            <div className={cn("w-3 h-3 rounded-full", color)} />
-            <span className="text-xs text-gray-400">{label}</span>
-        </div>
-    );
-}
-
-function MetricCard({ label, value, trend, color, icon, isPercent = false }: any) {
-    const isPositive = (color === 'emerald' || color === 'teal' || color === 'indigo' || color === 'amber' || color === 'cyan') ? trend === 'up' : trend === 'down';
-
-    let progressVal = 0;
-    if (typeof value === 'string' && value.includes('%')) {
-        progressVal = parseFloat(value);
-    } else if (typeof value === 'string' && value.includes('/')) {
-        progressVal = (parseFloat(value.split('/')[0]) / 10) * 100;
-    } else {
-        progressVal = (parseFloat(value) / 10) * 100;
-    }
-
-    const colorClasses: any = {
-        teal: { bg: 'bg-teal-500/10', text: 'text-teal-400', border: 'border-teal-500/20', progress: 'bg-teal-500' },
-        rose: { bg: 'bg-rose-500/10', text: 'text-rose-400', border: 'border-rose-500/20', progress: 'bg-rose-500' },
-        cyan: { bg: 'bg-cyan-500/10', text: 'text-cyan-400', border: 'border-cyan-500/20', progress: 'bg-cyan-500' },
-        emerald: { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/20', progress: 'bg-emerald-500' },
-        indigo: { bg: 'bg-indigo-500/10', text: 'text-indigo-400', border: 'border-indigo-500/20', progress: 'bg-indigo-500' },
-        amber: { bg: 'bg-amber-500/10', text: 'text-amber-400', border: 'border-amber-500/20', progress: 'bg-amber-500' }
-    };
-
-    const colors = colorClasses[color];
-
-    return (
-        <div className="bg-[#181818] border border-gray-800 rounded-lg p-4">
-            <div className="flex justify-between items-start mb-4">
-                <div className={cn("p-2 rounded-lg", colors.bg, colors.text)}>
-                    {icon}
+        <div>
+            <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center space-x-3">
+                    <div className={cn("p-2 rounded-xl text-white", color)}>
+                        {icon}
+                    </div>
+                    <div>
+                        <h4 className="text-sm font-bold text-gray-600">{label}</h4>
+                        <p className="text-3xl font-black text-gray-900 mt-1">{value.toFixed(1)}{suffix}</p>
+                    </div>
                 </div>
                 <div className={cn(
-                    "flex items-center px-2 py-1 rounded-md text-xs font-medium",
-                    isPositive ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-red-500/10 text-red-400 border border-red-500/20"
+                    "px-3 py-1.5 rounded-full text-xs font-bold flex items-center space-x-1",
+                    isGood ? "bg-emerald-100 text-emerald-700" : "bg-orange-100 text-orange-700"
                 )}>
-                    {trend === 'up' ? <TrendingUp size={12} className="mr-1" /> : <TrendingDown size={12} className="mr-1" />}
-                    {trend === 'up' ? '+2.4%' : '-1.2%'}
+                    {trend === 'up' ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+                    <span>{isGood ? 'Good' : 'Monitor'}</span>
                 </div>
             </div>
 
-            <div className="space-y-1 mb-4">
-                <span className="text-xs text-gray-500">{label}</span>
-                <div className="flex items-baseline space-x-2">
-                    <span className="text-2xl font-bold text-white">{value}</span>
-                    {!isPercent && !value.toString().includes('/') && <span className="text-gray-600 text-sm">/ 10</span>}
+            <div className="space-y-2">
+                <div className="h-3 w-full bg-gray-200 rounded-full overflow-hidden">
+                    <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${Math.min(percentage, 100)}%` }}
+                        transition={{ duration: 1.5, ease: "easeOut" }}
+                        className={cn("h-full rounded-full relative", color)}
+                    >
+                        <div className="absolute inset-0 bg-white/30 animate-pulse" />
+                    </motion.div>
                 </div>
-            </div>
-
-            <div className="h-1.5 w-full bg-gray-800 rounded-full overflow-hidden">
-                <motion.div
-                    initial={{ width: 0 }}
-                    animate={{ width: `${Math.min(progressVal, 100)}%` }}
-                    transition={{ duration: 1, ease: 'easeOut' }}
-                    className={cn("h-full rounded-full", colors.progress)}
-                />
+                <div className="flex justify-between text-xs font-medium text-gray-500">
+                    <span>0</span>
+                    <span>{maxValue}</span>
+                </div>
             </div>
         </div>
     );

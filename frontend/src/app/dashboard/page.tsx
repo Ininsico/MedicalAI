@@ -3,8 +3,8 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { detectUnusualChanges } from '@/lib/analysis';
-import PatientDashboard from '@/components/dashboard/PatientDashboard';
-import CaregiverDashboard from '@/components/dashboard/CaregiverDashboard';
+import PatientDashboard from '../../components/dashboard/PatientDashboard';
+import CaregiverDashboard from '../../components/dashboard/CaregiverDashboard';
 
 export default function DashboardPage() {
     const [user, setUser] = useState<any>(null);
