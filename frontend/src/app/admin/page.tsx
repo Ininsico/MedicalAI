@@ -4,14 +4,14 @@ import React, { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import Link from 'next/link';
 import { Input } from '@/components/ui/Input';
 import {
-    Users, UserPlus, Activity, Shield, Activity as Heart, LogOut as LogOutIcon,
-    Clock, ChevronRight, Search, Filter, AlertCircle, ArrowUpRight,
-    BarChart3, Database, Lock as LockIcon, CheckCircle2, UserCog,
-    BriefcaseMedical, ExternalLink, ArrowRight, Share2, Stethoscope,
-    Mail, User, Phone, X, LogOut, ShieldCheck
+    Users, UserPlus, Activity, Shield, LogOut,
+    Search, AlertCircle, TrendingUp, BarChart3,
+    CheckCircle2, BriefcaseMedical, ArrowLeft,
+    Stethoscope, Mail, User, Phone, X, Eye,
+    Home, Settings, Database, FileText, Menu,
+    ChevronRight, Circle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -28,7 +28,7 @@ export default function AdminPage() {
     const [loading, setLoading] = useState(true);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
-    const [selectedCaregiverId, setSelectedCaregiverId] = useState('');
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const [healthData, setHealthData] = useState<any>(null);
     const [stats, setStats] = useState({
         totalPatients: 0,
@@ -47,7 +47,6 @@ export default function AdminPage() {
                 ]);
 
                 if (patientsRes && patientsRes.patients) {
-                    console.log("DEBUG: Received patients:", patientsRes.patients);
                     setPatients(patientsRes.patients);
                 }
                 if (healthRes) {
@@ -55,7 +54,7 @@ export default function AdminPage() {
                     setStats({
                         totalPatients: healthRes.statistics?.total_patients || 0,
                         activeCaregivers: healthRes.statistics?.total_caregivers || 0,
-                        systemHealth: healthRes.status === 'ok' ? 'Nominal' : 'Warning',
+                        systemHealth: healthRes.status === 'ok' ? 'Healthy' : 'Warning',
                         totalLogs: healthRes.statistics?.total_logs || 0
                     });
                 }
@@ -113,547 +112,535 @@ export default function AdminPage() {
         window.location.href = '/login';
     };
 
+    const navItems = [
+        { id: 'patients', label: 'Patients', icon: Users },
+        { id: 'caregivers', label: 'Caregivers', icon: BriefcaseMedical },
+        { id: 'logs', label: 'Audit Logs', icon: FileText },
+    ];
+
     return (
-        <div className="min-h-screen bg-[#0a0c10] text-slate-200 font-sans selection:bg-teal-500 selection:text-white">
-            {/* Admin Header */}
-            <header className="bg-[#0f1117]/80 backdrop-blur-xl border-b border-white/5 sticky top-0 z-50">
-                <div className="max-w-[1600px] mx-auto px-8 py-4 flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                        <div className="w-12 h-12 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-2xl flex items-center justify-center text-slate-900 shadow-lg shadow-teal-500/20">
-                            <Shield size={26} />
-                        </div>
-                        <div>
-                            <h1 className="text-2xl font-black tracking-tight text-white uppercase">Control<span className="text-teal-500 font-serif italic lowercase ml-1">Center</span></h1>
-                            <div className="flex items-center space-x-2">
-                                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Protocol v4.2.0</span>
-                                <span className="w-1 h-1 bg-slate-700 rounded-full" />
-                                <span className="text-[10px] font-bold text-teal-500/80 uppercase">Root Access Verified</span>
+        <div className="min-h-screen bg-[#1c1c1c] text-gray-200 flex">
+            {/* Sidebar */}
+            <aside className={cn(
+                "bg-[#181818] border-r border-gray-800 flex flex-col transition-all duration-300",
+                sidebarCollapsed ? "w-16" : "w-64"
+            )}>
+                {/* Logo */}
+                <div className="h-14 border-b border-gray-800 flex items-center px-4 justify-between">
+                    {!sidebarCollapsed && (
+                        <div className="flex items-center space-x-2">
+                            <div className="w-7 h-7 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-md flex items-center justify-center">
+                                <Shield size={16} className="text-white" />
                             </div>
+                            <span className="font-semibold text-white">MedicalAI</span>
                         </div>
-                    </div>
+                    )}
+                    <button
+                        onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                        className="p-1.5 hover:bg-gray-800 rounded-md transition-colors"
+                    >
+                        <Menu size={18} />
+                    </button>
+                </div>
 
-                    <div className="flex items-center space-x-8">
-                        <nav className="hidden lg:flex items-center space-x-2 bg-white/5 p-1 rounded-xl border border-white/5">
-                            {(['patients', 'caregivers', 'logs'] as const).map((tab) => (
-                                <button
-                                    key={tab}
-                                    onClick={() => { setActiveTab(tab); setSelectedPatient(null); }}
-                                    className={cn(
-                                        "px-6 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all",
-                                        activeTab === tab && !selectedPatient ? "bg-teal-600 text-white shadow-lg shadow-teal-600/20" : "text-slate-500 hover:text-slate-300"
-                                    )}
-                                >
-                                    {tab}
-                                </button>
-                            ))}
-                        </nav>
-
-                        <div className="h-8 w-px bg-white/5" />
-
-                        <div className="flex items-center space-x-4">
-                            <div className="hidden md:flex flex-col items-end">
-                                <span className="text-xs font-bold text-white">System Administrator</span>
-                                <span className="text-[10px] text-slate-500 font-mono">ID: ADMIN_01</span>
-                            </div>
+                {/* Navigation */}
+                <nav className="flex-1 p-3 space-y-1">
+                    {navItems.map((item) => {
+                        const Icon = item.icon;
+                        const isActive = activeTab === item.id;
+                        return (
                             <button
-                                onClick={logout}
-                                className="p-3 bg-red-500/10 text-red-500 rounded-xl hover:bg-red-500 hover:text-white transition-all border border-red-500/20"
+                                key={item.id}
+                                onClick={() => { setActiveTab(item.id as any); setSelectedPatient(null); }}
+                                className={cn(
+                                    "w-full flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-all",
+                                    isActive
+                                        ? "bg-gray-800 text-white"
+                                        : "text-gray-400 hover:text-gray-200 hover:bg-gray-800/50"
+                                )}
                             >
-                                <LogOut size={20} />
+                                <Icon size={18} />
+                                {!sidebarCollapsed && <span>{item.label}</span>}
                             </button>
+                        );
+                    })}
+                </nav>
+
+                {/* User Section */}
+                <div className="border-t border-gray-800 p-3">
+                    <div className={cn(
+                        "flex items-center space-x-3 p-2 rounded-md hover:bg-gray-800 transition-colors",
+                        sidebarCollapsed && "justify-center"
+                    )}>
+                        <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center text-white text-sm font-semibold">
+                            A
+                        </div>
+                        {!sidebarCollapsed && (
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-white truncate">Administrator</p>
+                                <p className="text-xs text-gray-500 truncate">admin@medicalai.com</p>
+                            </div>
+                        )}
+                    </div>
+                    <button
+                        onClick={logout}
+                        className={cn(
+                            "w-full mt-2 flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium text-gray-400 hover:text-red-400 hover:bg-gray-800/50 transition-all",
+                            sidebarCollapsed && "justify-center"
+                        )}
+                    >
+                        <LogOut size={18} />
+                        {!sidebarCollapsed && <span>Logout</span>}
+                    </button>
+                </div>
+            </aside>
+
+            {/* Main Content */}
+            <div className="flex-1 flex flex-col overflow-hidden">
+                {/* Top Bar */}
+                <header className="h-14 bg-[#181818] border-b border-gray-800 flex items-center justify-between px-6">
+                    <div>
+                        <h1 className="text-lg font-semibold text-white">
+                            {selectedPatient ? selectedPatient.full_name :
+                                activeTab === 'patients' ? 'Patient Management' :
+                                    activeTab === 'caregivers' ? 'Caregiver Management' : 'Audit Logs'}
+                        </h1>
+                    </div>
+                    <div className="flex items-center space-x-3">
+                        <div className="flex items-center space-x-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-md">
+                            <Circle size={8} className="text-emerald-500 fill-emerald-500" />
+                            <span className="text-xs font-medium text-emerald-400">System Healthy</span>
                         </div>
                     </div>
-                </div>
-            </header>
+                </header>
 
-            <main className="max-w-[1600px] mx-auto p-8 space-y-10">
-                {/* Real-time Status Row */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <AdminStatCard label="Total Patients" value={stats.totalPatients.toString()} icon={<Users size={20} />} trend="+5.2%" color="teal" />
-                    <AdminStatCard label="Caregiver Network" value={stats.activeCaregivers.toString()} icon={<BriefcaseMedical size={20} />} trend="Stable" color="cyan" />
-                    <AdminStatCard label="Diagnostic Blocks" value={stats.totalLogs.toString()} icon={<Activity size={20} />} trend="+124 today" color="emerald" />
+                {/* Content Area */}
+                <main className="flex-1 overflow-auto p-6">
+                    {/* Stats Cards */}
+                    {!selectedPatient && (
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                            <StatCard
+                                label="Total Patients"
+                                value={stats.totalPatients.toString()}
+                                icon={<Users size={18} />}
+                                trend="+12%"
+                            />
+                            <StatCard
+                                label="Active Caregivers"
+                                value={stats.activeCaregivers.toString()}
+                                icon={<BriefcaseMedical size={18} />}
+                                trend="Stable"
+                            />
+                            <StatCard
+                                label="Health Records"
+                                value={stats.totalLogs.toString()}
+                                icon={<Activity size={18} />}
+                                trend="+24 today"
+                            />
+                        </div>
+                    )}
 
-                </div>
-
-                <div className="space-y-10">
-                    {/* Main Content Area */}
-                    <div className="space-y-10">
-                        {activeTab === 'patients' && !selectedPatient && (
-                            <Card className="bg-[#0f1117] border-white/5 p-8" hover={false}>
-                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
-                                    <div>
-                                        <h2 className="text-3xl font-black text-white tracking-tight mb-2">Patient Directory</h2>
-                                        <p className="text-slate-500 font-medium tracking-tight">Managing global clinical provisioning and doctor assignments.</p>
-                                    </div>
-                                    <Button variant="dark" className="bg-teal-600 hover:bg-teal-500 text-white font-black border-none px-8 py-4 rounded-2xl shadow-xl shadow-teal-500/20">
-                                        <UserPlus size={20} className="mr-3" /> Provision New Patient
-                                    </Button>
+                    {/* Patients Tab */}
+                    {activeTab === 'patients' && !selectedPatient && (
+                        <div className="bg-[#181818] border border-gray-800 rounded-lg">
+                            <div className="p-4 border-b border-gray-800 flex items-center justify-between">
+                                <div className="flex items-center space-x-3">
+                                    <h2 className="text-base font-semibold text-white">All Patients</h2>
+                                    <span className="px-2 py-0.5 bg-gray-800 text-gray-400 text-xs rounded-md">
+                                        {patients.filter(p => (p.role === 'patient' || !p.role)).length}
+                                    </span>
                                 </div>
+                                <button
+                                    onClick={() => setIsCreateModalOpen(true)}
+                                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-md transition-colors flex items-center space-x-2"
+                                >
+                                    <UserPlus size={16} />
+                                    <span>Add Patient</span>
+                                </button>
+                            </div>
 
-                                <div className="overflow-x-auto rounded-2xl border border-white/5">
-                                    <table className="w-full text-left">
-                                        <thead>
-                                            <tr className="bg-white/[0.02] text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">
-                                                <th className="py-5 pl-8">Identity Matrix</th>
-                                                <th className="py-5">Clinical Status</th>
-                                                <th className="py-5">Last Link</th>
-                                                <th className="py-5">Assigned Clinician</th>
-                                                <th className="py-5 pr-8 text-right">Operations</th>
+                            <div className="overflow-x-auto">
+                                <table className="w-full">
+                                    <thead>
+                                        <tr className="border-b border-gray-800">
+                                            <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Patient</th>
+                                            <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                            <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Last Activity</th>
+                                            <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Doctor</th>
+                                            <th className="text-right py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-800">
+                                        {loading ? (
+                                            <tr>
+                                                <td colSpan={5} className="py-12 text-center">
+                                                    <div className="flex flex-col items-center space-y-3">
+                                                        <div className="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+                                                        <span className="text-sm text-gray-500">Loading patients...</span>
+                                                    </div>
+                                                </td>
                                             </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-white/5">
-                                            {loading ? (
-                                                <tr>
-                                                    <td colSpan={5} className="py-24 text-center">
-                                                        <div className="flex flex-col items-center space-y-4">
-                                                            <div className="w-10 h-10 border-4 border-teal-500 border-t-transparent rounded-full animate-spin" />
-                                                            <span className="text-xs font-black uppercase tracking-widest text-slate-500">Querying Neural Core...</span>
+                                        ) : patients.filter(p => (p.role === 'patient' || !p.role) && !p.full_name?.toLowerCase().includes('caretaker')).length === 0 ? (
+                                            <tr>
+                                                <td colSpan={5} className="py-12 text-center">
+                                                    <p className="text-gray-500">No patients found</p>
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            patients.filter(p => (p.role === 'patient' || !p.role) && !p.full_name?.toLowerCase().includes('caretaker')).map((patient) => (
+                                                <tr key={patient.id} className="hover:bg-gray-800/30 transition-colors">
+                                                    <td className="py-3 px-4">
+                                                        <div className="flex items-center space-x-3">
+                                                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center text-white text-sm font-semibold">
+                                                                {patient.full_name?.charAt(0) || '?'}
+                                                            </div>
+                                                            <div>
+                                                                <div className="text-sm font-medium text-white">{patient.full_name}</div>
+                                                                <div className="text-xs text-gray-500">{patient.email}</div>
+                                                            </div>
                                                         </div>
                                                     </td>
-                                                </tr>
-                                            ) : patients.length === 0 ? (
-                                                <tr>
-                                                    <td colSpan={5} className="py-24 text-center text-slate-500 font-bold uppercase tracking-widest">
-                                                        No patient data packets found in this sector.
+                                                    <td className="py-3 px-4">
+                                                        <span className={cn(
+                                                            "inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium",
+                                                            patient.status?.includes('Active')
+                                                                ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                                                                : "bg-gray-800 text-gray-400 border border-gray-700"
+                                                        )}>
+                                                            <Circle size={6} className={cn("mr-1.5", patient.status?.includes('Active') ? "fill-emerald-400" : "fill-gray-400")} />
+                                                            {patient.status || 'Inactive'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="py-3 px-4 text-sm text-gray-400">
+                                                        {patient.last_login ? new Date(patient.last_login).toLocaleDateString() : 'Never'}
+                                                    </td>
+                                                    <td className="py-3 px-4">
+                                                        <div className="text-sm text-gray-300">{patient.doctor_name || 'Unassigned'}</div>
+                                                        {patient.caregiver_count > 0 && (
+                                                            <div className="text-xs text-gray-500 mt-0.5">
+                                                                +{patient.caregiver_count} caregiver{patient.caregiver_count > 1 ? 's' : ''}
+                                                            </div>
+                                                        )}
+                                                    </td>
+                                                    <td className="py-3 px-4 text-right">
+                                                        <button
+                                                            onClick={() => handleManagePatient(patient)}
+                                                            className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-medium rounded-md transition-colors inline-flex items-center space-x-1.5"
+                                                        >
+                                                            <Eye size={14} />
+                                                            <span>View</span>
+                                                        </button>
                                                     </td>
                                                 </tr>
-                                            ) : (
-                                                patients.filter(p => (p.role === 'patient' || !p.role) && !p.full_name?.toLowerCase().includes('caretaker') && !p.email?.toLowerCase().includes('caretaker')).map((patient) => (
-                                                    <tr key={patient.id} className="group hover:bg-white/5 transition-colors">
-                                                        <td className="py-6 pl-8">
-                                                            <div className="flex items-center space-x-4">
-                                                                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-slate-800 to-slate-900 border border-white/5 flex items-center justify-center text-slate-300 font-black text-lg">
-                                                                    {patient.full_name?.charAt(0) || '?'}
-                                                                </div>
-                                                                <div>
-                                                                    <div className="font-black text-white text-lg tracking-tight">{patient.full_name}</div>
-                                                                    <div className="text-[10px] text-slate-600 font-mono tracking-tighter uppercase">{patient.email}</div>
-                                                                </div>
-                                                            </div>
-                                                        </td>
-                                                        <td className="py-6">
-                                                            <div className={cn(
-                                                                "inline-flex items-center px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest",
-                                                                patient.status?.includes('Active') ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-slate-800 text-slate-500"
-                                                            )}>
-                                                                <div className={cn("w-1.5 h-1.5 rounded-full mr-2", patient.status?.includes('Active') ? "bg-emerald-500 animate-pulse" : "bg-slate-600")} />
-                                                                {patient.status}
-                                                            </div>
-                                                        </td>
-                                                        <td className="py-6 text-xs text-slate-400 font-mono">
-                                                            {patient.last_login ? new Date(patient.last_login).toLocaleString() : 'System Offline'}
-                                                        </td>
-                                                        <td className="py-6">
-                                                            <div className="flex flex-col space-y-1">
-                                                                <div className="flex items-center space-x-2 text-slate-300">
-                                                                    <Stethoscope size={16} className="text-teal-500" />
-                                                                    <span className="text-sm font-bold">{patient.doctor_name || 'Unassigned'}</span>
-                                                                </div>
-                                                                {patient.caregiver_count > 0 && (
-                                                                    <div className="flex items-center space-x-2">
-                                                                        <div className="px-2 py-0.5 bg-cyan-500/10 text-cyan-500 rounded text-[8px] font-black uppercase tracking-widest border border-cyan-500/10">
-                                                                            +{patient.caregiver_count} Clinical Node{patient.caregiver_count > 1 ? 's' : ''}
-                                                                        </div>
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        </td>
-                                                        <td className="py-6 pr-8 text-right">
-                                                            <button
-                                                                onClick={() => handleManagePatient(patient)}
-                                                                className="px-6 py-2 bg-white/5 hover:bg-white/10 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-white rounded-lg transition-all border border-white/5"
-                                                            >
-                                                                Manage
-                                                            </button>
-                                                        </td>
-                                                    </tr>
-                                                ))
-                                            )}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </Card>
-                        )}
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
 
-                        {selectedPatient && (
-                            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                                <div className="flex items-center justify-between">
-                                    <button onClick={() => { setSelectedPatient(null); setDetailTab('audit'); }} className="flex items-center text-teal-500 font-black text-xs uppercase tracking-widest hover:text-teal-400 transition-colors">
-                                        <ArrowRight size={16} className="mr-2 rotate-180" /> Back to Directory
-                                    </button>
-                                    <div className="flex bg-white/5 p-1 rounded-xl border border-white/5">
+                    {/* Patient Details */}
+                    {selectedPatient && (
+                        <div className="space-y-4">
+                            <button
+                                onClick={() => { setSelectedPatient(null); setDetailTab('audit'); }}
+                                className="flex items-center text-gray-400 hover:text-white text-sm transition-colors"
+                            >
+                                <ArrowLeft size={16} className="mr-2" /> Back to Patients
+                            </button>
+
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                                {/* Profile Card */}
+                                <div className="bg-[#181818] border border-gray-800 rounded-lg p-6">
+                                    <div className="flex flex-col items-center text-center space-y-4 mb-6">
+                                        <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center text-white font-bold text-2xl">
+                                            {selectedPatient.full_name?.charAt(0)}
+                                        </div>
+                                        <div>
+                                            <h2 className="text-lg font-semibold text-white">{selectedPatient.full_name}</h2>
+                                            <p className="text-sm text-gray-500 mt-1">{selectedPatient.email}</p>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <span className="px-2.5 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-md text-xs font-medium">
+                                                Verified
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-3 border-t border-gray-800 pt-6">
+                                        <DetailRow label="Status" value={selectedPatient.status} />
+                                        <DetailRow label="Doctor" value={selectedPatient.doctor_name || 'Unassigned'} />
+                                        <DetailRow label="Joined" value={new Date(selectedPatient.created_at).toLocaleDateString()} />
+                                    </div>
+
+                                    <div className="mt-6 pt-6 border-t border-gray-800 space-y-2">
+                                        <button className="w-full px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-medium rounded-md transition-colors">
+                                            Reset Password
+                                        </button>
+                                        <button className="w-full px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 text-sm font-medium rounded-md transition-colors">
+                                            Deactivate Account
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Details Panel */}
+                                <div className="lg:col-span-2 bg-[#181818] border border-gray-800 rounded-lg p-6">
+                                    <div className="flex items-center space-x-2 mb-6 border-b border-gray-800 pb-4">
                                         {[
-                                            { id: 'audit', label: 'Audit Stream', icon: <Activity size={14} /> },
-                                            { id: 'care_team', label: 'Care Team', icon: <BriefcaseMedical size={14} /> }
+                                            { id: 'audit', label: 'Health Records', icon: <Activity size={16} /> },
+                                            { id: 'care_team', label: 'Care Team', icon: <BriefcaseMedical size={16} /> }
                                         ].map((tab) => (
                                             <button
                                                 key={tab.id}
                                                 onClick={() => setDetailTab(tab.id as any)}
                                                 className={cn(
-                                                    "flex items-center space-x-2 px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all",
-                                                    detailTab === tab.id ? "bg-teal-600 text-white shadow-lg shadow-teal-500/20" : "text-slate-500 hover:text-slate-300"
-                                                )}
+                                                    "flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium transition-all",
+                                                    onClick = {() => setIsAssignModalOpen(true)}
+                                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-md transition-colors flex items-center space-x-2"
                                             >
-                                                {tab.icon}
-                                                <span>{tab.label}</span>
-                                            </button>
-                                        ))}
+                                        <UserPlus size={14} />
+                                        <span>Assign</span>
+                                    </button>
+                                </div>
+
+                                {!patientDetails?.assignments?.length ? (
+                                    <div className="py-12 text-center border-2 border-dashed border-gray-800 rounded-lg">
+                                        <p className="text-gray-400 mb-1">No caregivers assigned</p>
+                                        <p className="text-sm text-gray-600 mb-4">Assign a caregiver to this patient's care team.</p>
                                     </div>
-                                </div>
-
-                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                                    <Card className="lg:col-span-1 bg-[#0f1117] border-white/5 p-8" hover={false}>
-                                        <div className="flex flex-col items-center text-center space-y-6 mb-8">
-                                            <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-teal-500 to-cyan-600 flex items-center justify-center text-slate-900 font-black text-4xl shadow-2xl shadow-teal-500/20">
-                                                {selectedPatient.full_name?.charAt(0)}
-                                            </div>
-                                            <div>
-                                                <h2 className="text-2xl font-black text-white">{selectedPatient.full_name}</h2>
-                                                <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mt-1">{selectedPatient.email}</p>
-                                            </div>
-                                            <div className="flex gap-2">
-                                                <span className="px-3 py-1 bg-teal-500/10 text-teal-500 rounded-full text-[10px] font-black uppercase tracking-widest border border-teal-500/10">Verified</span>
-                                                <span className="px-3 py-1 bg-white/5 text-slate-400 rounded-full text-[10px] font-black uppercase tracking-widest border border-white/5">v4.0.1</span>
-                                            </div>
-                                        </div>
-
-                                        <div className="space-y-6 border-t border-white/5 pt-8">
-                                            <DetailItem label="Clinical Status" value={selectedPatient.status} />
-                                            <DetailItem label="Assigned Doctor" value={selectedPatient.doctor_name} />
-
-                                            <DetailItem label="Account Created" value={new Date(selectedPatient.created_at).toLocaleDateString()} />
-                                        </div>
-
-                                        <div className="mt-8 pt-8 border-t border-white/5 space-y-4">
-                                            <Button variant="dark" className="w-full bg-slate-800 hover:bg-slate-700 text-white font-black text-[10px] uppercase tracking-widest py-4">Reset Authentication</Button>
-                                            <Button variant="dark" className="w-full bg-red-900/20 hover:bg-red-900/40 text-red-500 font-black text-[10px] uppercase tracking-widest py-4 border border-red-500/20">Terminate Node</Button>
-                                        </div>
-                                    </Card>
-
-                                    <Card className="lg:col-span-2 bg-[#0f1117] border-white/5 p-8" hover={false}>
-                                        {detailTab === 'audit' && (
-                                            <>
-                                                <h3 className="text-xl font-black text-white mb-8 tracking-tight flex items-center">
-                                                    <Activity size={20} className="mr-3 text-teal-500" /> Longitudinal Audit Stream
-                                                </h3>
-
-                                                {detailLoading ? (
-                                                    <div className="py-24 text-center text-slate-500 font-black uppercase tracking-widest animate-pulse">Synchronizing Data Blocks...</div>
-                                                ) : !patientDetails?.logs?.length ? (
-                                                    <div className="py-24 text-center border-2 border-dashed border-white/5 rounded-3xl">
-                                                        <p className="text-slate-500 font-black uppercase tracking-widest mb-2">No Clinical Data Packets</p>
-                                                        <p className="text-[10px] text-slate-600 font-medium">This patient has not yet synchronized their local diagnostic state.</p>
-                                                    </div>
-                                                ) : (
-                                                    <div className="space-y-4">
-                                                        {patientDetails.logs.map((log: any) => (
-                                                            <div key={log.id} className="p-6 bg-white/[0.02] border border-white/5 rounded-2xl group hover:bg-white/[0.04] transition-all">
-                                                                <div className="flex items-center justify-between mb-4">
-                                                                    <div className="px-4 py-1.5 bg-teal-500/10 text-teal-400 rounded-full text-[10px] font-black uppercase tracking-widest border border-teal-500/10">
-                                                                        Log Packet: {log.date}
-                                                                    </div>
-                                                                    <span className="text-[10px] text-slate-600 font-mono italic">{new Date(log.created_at).toLocaleTimeString()}</span>
-                                                                </div>
-                                                                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-                                                                    <MiniMetric label="Tremor" value={log.tremor_severity} color="teal" />
-                                                                    <MiniMetric label="Stiffness" value={log.stiffness_severity} color="rose" />
-                                                                    <MiniMetric label="Sleep" value={log.sleep_hours + 'h'} color="cyan" />
-                                                                    <MiniMetric label="Mood" value={log.mood} color="indigo" />
-                                                                </div>
-                                                                {log.notes && (
-                                                                    <div className="mt-4 p-4 bg-black/20 rounded-xl text-teal-100/60 text-xs font-medium leading-relaxed italic border-l-2 border-teal-500/30">
-                                                                        "{log.notes}"
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                            </>
-                                        )}
-
-                                        {detailTab === 'care_team' && (
-                                            <div className="space-y-8">
-                                                <h3 className="text-xl font-black text-white tracking-tight flex items-center">
-                                                    <BriefcaseMedical size={20} className="mr-3 text-cyan-500" /> Caregiver Assignment
-                                                </h3>
-
-                                                {!patientDetails?.assignments?.length ? (
-                                                    <div className="py-24 text-center border-2 border-dashed border-white/5 rounded-3xl">
-                                                        <p className="text-slate-500 font-black uppercase tracking-widest mb-2">Isolated Node</p>
-                                                        <p className="text-[10px] text-slate-600 font-medium lowercase">No caregivers assigned to this patient profile.</p>
-                                                        <Button
-                                                            onClick={() => setIsAssignModalOpen(true)}
-                                                            variant="dark"
-                                                            className="mt-8 bg-cyan-600 hover:bg-cyan-500 text-white font-black text-[10px] uppercase tracking-widest px-8 rounded-xl"
-                                                        >
-                                                            Assign Caretaker
-                                                        </Button>
-                                                    </div>
-                                                ) : (
-                                                    <div className="grid grid-cols-1 gap-6">
-                                                        <div className="flex justify-end">
-                                                            <Button
-                                                                onClick={() => setIsAssignModalOpen(true)}
-                                                                variant="dark"
-                                                                className="bg-cyan-600/20 hover:bg-cyan-600/40 text-cyan-500 font-black text-[10px] uppercase tracking-widest px-6 py-2 rounded-xl border border-cyan-600/20"
-                                                            >
-                                                                + Add Caretaker
-                                                            </Button>
-                                                        </div>
-                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                            {patientDetails.assignments.map((assign: any) => (
-                                                                <div key={assign.id} className="p-6 bg-white/[0.02] border border-white/5 rounded-2xl hover:bg-white/[0.04] transition-all">
-                                                                    <div className="flex items-center space-x-4 mb-6">
-                                                                        <div className="w-12 h-12 rounded-xl bg-cyan-500/10 text-cyan-500 flex items-center justify-center font-black">
-                                                                            {assign.caregiver?.full_name?.charAt(0)}
-                                                                        </div>
-                                                                        <div>
-                                                                            <div className="font-black text-white tracking-tight">{assign.caregiver?.full_name}</div>
-                                                                            <div className="text-[10px] text-slate-500 font-mono italic uppercase">Certified Tech</div>
-                                                                        </div>
-                                                                    </div>
-                                                                    <div className="space-y-3">
-                                                                        <div className="flex justify-between text-[10px]">
-                                                                            <span className="text-slate-600 font-black uppercase">Role</span>
-                                                                            <span className="text-cyan-400 font-bold uppercase">{assign.assignment_notes || 'Primary care'}</span>
-                                                                        </div>
-                                                                        <div className="flex justify-between text-[10px]">
-                                                                            <span className="text-slate-600 font-black uppercase">Linked Since</span>
-                                                                            <span className="text-slate-300 font-mono">{new Date(assign.created_at).toLocaleDateString()}</span>
-                                                                        </div>
-                                                                        <div className="flex justify-between text-[10px]">
-                                                                            <span className="text-slate-600 font-black uppercase">Access</span>
-                                                                            <span className="text-emerald-500 font-bold uppercase">Active</span>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )}
-
-
-                                    </Card>
-                                </div>
-                            </div>
-                        )}
-
-
-                        {activeTab === 'caregivers' && (
-                            <Card className="bg-[#0f1117] border-white/5 p-8" hover={false}>
-                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
-                                    <div>
-                                        <h2 className="text-3xl font-black text-white tracking-tight mb-2">Caregiver Network</h2>
-                                        <p className="text-slate-500 font-medium tracking-tight">Overseeing certified medical professionals and family caregivers.</p>
-                                    </div>
-                                    <Button
-                                        onClick={() => setIsCreateModalOpen(true)}
-                                        variant="dark"
-                                        className="bg-cyan-600 hover:bg-cyan-500 text-white font-black border-none px-8 py-4 rounded-2xl"
-                                    >
-                                        <BriefcaseMedical size={20} className="mr-3" /> Recruit Caregiver
-                                    </Button>
-                                </div>
-
-                                <div className="overflow-x-auto rounded-2xl border border-white/5">
-                                    <table className="w-full text-left">
-                                        <thead>
-                                            <tr className="bg-white/[0.02] text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">
-                                                <th className="py-5 pl-8">Caregiver Data</th>
-                                                <th className="py-5">Access Level</th>
-                                                <th className="py-5">Last Link</th>
-                                                <th className="py-5">Created</th>
-
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-white/5">
-                                            {loading ? (
-                                                <tr><td colSpan={5} className="py-24 text-center text-slate-500 font-black uppercase tracking-widest">Synthesizing...</td></tr>
-                                            ) : caregivers.length === 0 ? (
-                                                <tr><td colSpan={5} className="py-24 text-center text-slate-500 font-bold uppercase">No active nodes in this sector.</td></tr>
-                                            ) : (
-                                                caregivers.map((c) => (
-                                                    <tr key={c.id} className="group hover:bg-white/5 transition-colors">
-                                                        <td className="py-6 pl-8 font-black text-white">{c.full_name}<br /><span className="text-[10px] text-slate-600 font-mono">{c.email}</span></td>
-                                                        <td className="py-6"><span className="px-3 py-1 bg-cyan-500/10 text-cyan-400 rounded-full text-[10px] font-black uppercase tracking-widest border border-cyan-500/20">Standard Access</span></td>
-                                                        <td className="py-6 text-xs text-slate-400 font-mono">{c.last_login ? new Date(c.last_login).toLocaleString() : 'Never'}</td>
-                                                        <td className="py-6 text-xs text-slate-500 font-mono">{new Date(c.created_at).toLocaleDateString()}</td>
-
-                                                    </tr>
-                                                ))
-                                            )}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </Card>
-                        )}
-
-                        {activeTab === 'logs' && (
-                            <Card className="bg-[#0f1117] border-white/5 p-8" hover={false}>
-                                <div className="mb-10">
-                                    <h2 className="text-3xl font-black text-white tracking-tight mb-2">Immutable Audit Feed</h2>
-                                    <p className="text-slate-500 font-medium tracking-tight">Cryptographically logged system events and administrative maneuvers.</p>
-                                </div>
-
-                                <div className="space-y-4">
-                                    {loading ? (
-                                        <div className="py-24 text-center text-slate-500 font-black uppercase tracking-widest">Querying Blockchain...</div>
-                                    ) : auditLogs.length === 0 ? (
-                                        <div className="py-24 text-center text-slate-500 font-bold uppercase">Audit feed is currently clear.</div>
-                                    ) : (
-                                        auditLogs.map((log) => (
-                                            <div key={log.id} className="p-6 bg-white/[0.02] border border-white/5 rounded-2xl flex items-center justify-between group hover:bg-white/[0.04] transition-all">
-                                                <div className="flex items-center space-x-6">
-                                                    <div className={cn(
-                                                        "w-12 h-12 rounded-xl flex items-center justify-center font-black text-xs",
-                                                        log.action.includes('CREATE') ? "bg-emerald-500/10 text-emerald-500" :
-                                                            log.action.includes('DELETE') ? "bg-red-500/10 text-red-500" : "bg-teal-500/10 text-teal-500"
-                                                    )}>
-                                                        {log.action.split('_')[0]}
+                                ) : (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                        {patientDetails.assignments.map((assign: any) => (
+                                            <div key={assign.id} className="p-4 bg-gray-800/30 border border-gray-800 rounded-lg">
+                                                <div className="flex items-center space-x-3 mb-3">
+                                                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center font-semibold">
+                                                        {assign.caregiver?.full_name?.charAt(0)}
                                                     </div>
                                                     <div>
-                                                        <div className="font-black text-white tracking-tight">{log.details}</div>
-                                                        <div className="flex items-center space-x-3 mt-1">
-                                                            <span className="text-[10px] text-slate-500 font-mono uppercase tracking-widest">{log.user?.full_name || 'System'}</span>
-                                                            <span className="w-1 h-1 bg-slate-800 rounded-full" />
-                                                            <span className="text-[10px] text-slate-600 font-mono uppercase">{log.ip_address}</span>
-                                                        </div>
+                                                        <div className="text-sm font-medium text-white">{assign.caregiver?.full_name}</div>
+                                                        <div className="text-xs text-gray-500">Caregiver</div>
                                                     </div>
                                                 </div>
-                                                <div className="text-[10px] text-slate-500 font-mono text-right">
-                                                    <div>{new Date(log.created_at).toLocaleDateString()}</div>
-                                                    <div className="text-slate-700">{new Date(log.created_at).toLocaleTimeString()}</div>
+                                                <div className="space-y-2 text-xs">
+                                                    <div className="flex justify-between">
+                                                        <span className="text-gray-500">Role</span>
+                                                        <span className="text-gray-300">{assign.assignment_notes || 'Primary care'}</span>
+                                                    </div>
+                                                    <div className="flex justify-between">
+                                                        <span className="text-gray-500">Assigned</span>
+                                                        <span className="text-gray-300">{new Date(assign.created_at).toLocaleDateString()}</span>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        ))
-                                    )}
-                                </div>
-                            </Card>
-                        )}
-
-
-
-
-                    </div>
-
-                </div>
-            </main>
-
-            <CreateCaregiverModal
-                isOpen={isCreateModalOpen}
-                onClose={() => setIsCreateModalOpen(false)}
-                onSuccess={() => {
-                    // Refetch caregivers
-                    api.admin.getCaregivers().then(setCaregivers);
-                }}
-            />
-
-            <AssignCaregiverModal
-                isOpen={isAssignModalOpen}
-                onClose={() => setIsAssignModalOpen(false)}
-                patientId={selectedPatient?.id || ''}
-                onSuccess={async () => {
-                    if (selectedPatient?.id) {
-                        try {
-                            const [details, patientsRes, healthRes] = await Promise.all([
-                                api.admin.getPatientDetails(selectedPatient.id),
-                                api.admin.getPatients(),
-                                api.admin.getSystemHealth()
-                            ]);
-                            setPatientDetails(details);
-                            if (patientsRes && patientsRes.patients) {
-                                setPatients(patientsRes.patients);
-                                const updated = patientsRes.patients.find((p: any) => p.id === selectedPatient.id);
-                                if (updated) setSelectedPatient(updated);
-                            }
-                            if (healthRes) {
-                                setHealthData(healthRes);
-                                setStats({
-                                    totalPatients: healthRes.statistics?.total_patients || 0,
-                                    activeCaregivers: healthRes.statistics?.total_caregivers || 0,
-                                    systemHealth: healthRes.status === 'ok' ? 'Nominal' : 'Warning',
-                                    totalLogs: healthRes.statistics?.total_logs || 0
-                                });
-                            }
-                        } catch (err) {
-                            console.error("Refresh error after assignment:", err);
-                        }
-                    }
-                }}
-            />
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                                )}
+                        </div>
+                            </div>
         </div>
+    )
+}
+
+{/* Caregivers Tab */ }
+{
+    activeTab === 'caregivers' && (
+        <div className="bg-[#181818] border border-gray-800 rounded-lg">
+            <div className="p-4 border-b border-gray-800 flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                    <h2 className="text-base font-semibold text-white">All Caregivers</h2>
+                    <span className="px-2 py-0.5 bg-gray-800 text-gray-400 text-xs rounded-md">
+                        {caregivers.length}
+                    </span>
+                </div>
+                <button
+                    onClick={() => setIsCreateModalOpen(true)}
+                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-md transition-colors flex items-center space-x-2"
+                >
+                    <BriefcaseMedical size={16} />
+                    <span>Add Caregiver</span>
+                </button>
+            </div>
+
+            <div className="overflow-x-auto">
+                <table className="w-full">
+                    <thead>
+                        <tr className="border-b border-gray-800">
+                            <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Caregiver</th>
+                            <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Access Level</th>
+                            <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Last Login</th>
+                            <th className="text-left py-3 px-4 text-xs font-medium text-gray-500 uppercase tracking-wider">Joined</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-800">
+                        {loading ? (
+                            <tr><td colSpan={4} className="py-12 text-center text-gray-500">Loading...</td></tr>
+                        ) : caregivers.length === 0 ? (
+                            <tr><td colSpan={4} className="py-12 text-center text-gray-500">No caregivers found</td></tr>
+                        ) : (
+                            caregivers.map((c) => (
+                                <tr key={c.id} className="hover:bg-gray-800/30 transition-colors">
+                                    <td className="py-3 px-4">
+                                        <div className="flex items-center space-x-3">
+                                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white text-sm font-semibold">
+                                                {c.full_name?.charAt(0)}
+                                            </div>
+                                            <div>
+                                                <div className="text-sm font-medium text-white">{c.full_name}</div>
+                                                <div className="text-xs text-gray-500">{c.email}</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td className="py-3 px-4">
+                                        <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-md text-xs font-medium">
+                                            Standard
+                                        </span>
+                                    </td>
+                                    <td className="py-3 px-4 text-sm text-gray-400">
+                                        {c.last_login ? new Date(c.last_login).toLocaleString() : 'Never'}
+                                    </td>
+                                    <td className="py-3 px-4 text-sm text-gray-400">
+                                        {new Date(c.created_at).toLocaleDateString()}
+                                    </td>
+                                </tr>
+                            ))
+                        )}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    )
+}
+
+{/* Audit Logs Tab */ }
+{
+    activeTab === 'logs' && (
+        <div className="bg-[#181818] border border-gray-800 rounded-lg p-6">
+            <h2 className="text-base font-semibold text-white mb-4">System Activity</h2>
+            <div className="space-y-2">
+                {loading ? (
+                    <div className="py-12 text-center text-gray-500">Loading logs...</div>
+                ) : auditLogs.length === 0 ? (
+                    <div className="py-12 text-center text-gray-500">No audit logs found</div>
+                ) : (
+                    auditLogs.map((log) => (
+                        <div key={log.id} className="p-4 bg-gray-800/30 border border-gray-800 rounded-lg flex items-center justify-between hover:bg-gray-800/50 transition-all">
+                            <div className="flex items-center space-x-4">
+                                <div className={cn(
+                                    "w-8 h-8 rounded-lg flex items-center justify-center text-xs font-semibold",
+                                    log.action.includes('CREATE') ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" :
+                                        log.action.includes('DELETE') ? "bg-red-500/10 text-red-400 border border-red-500/20" :
+                                            "bg-blue-500/10 text-blue-400 border border-blue-500/20"
+                                )}>
+                                    {log.action.split('_')[0].charAt(0)}
+                                </div>
+                                <div>
+                                    <div className="text-sm font-medium text-white">{log.details}</div>
+                                    <div className="flex items-center space-x-2 mt-1 text-xs text-gray-500">
+                                        <span>{log.user?.full_name || 'System'}</span>
+                                        <span>•</span>
+                                        <span>{log.ip_address}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="text-xs text-gray-500 text-right">
+                                <div>{new Date(log.created_at).toLocaleDateString()}</div>
+                                <div className="text-gray-600">{new Date(log.created_at).toLocaleTimeString()}</div>
+                            </div>
+                        </div>
+                    ))
+                )}
+            </div>
+        </div>
+    )
+}
+                </main >
+            </div >
+
+    {/* Modals */ }
+    < CreateCaregiverModal
+isOpen = { isCreateModalOpen }
+onClose = {() => setIsCreateModalOpen(false)}
+onSuccess = {() => {
+    api.admin.getCaregivers().then(setCaregivers);
+}}
+            />
+
+    < AssignCaregiverModal
+isOpen = { isAssignModalOpen }
+onClose = {() => setIsAssignModalOpen(false)}
+patientId = { selectedPatient?.id || ''}
+onSuccess = { async() => {
+    if (selectedPatient?.id) {
+        try {
+            const [details, patientsRes, healthRes] = await Promise.all([
+                api.admin.getPatientDetails(selectedPatient.id),
+                api.admin.getPatients(),
+                api.admin.getSystemHealth()
+            ]);
+            setPatientDetails(details);
+            if (patientsRes && patientsRes.patients) {
+                setPatients(patientsRes.patients);
+                const updated = patientsRes.patients.find((p: any) => p.id === selectedPatient.id);
+                if (updated) setSelectedPatient(updated);
+            }
+            if (healthRes) {
+                setHealthData(healthRes);
+                setStats({
+                    totalPatients: healthRes.statistics?.total_patients || 0,
+                    activeCaregivers: healthRes.statistics?.total_caregivers || 0,
+                    systemHealth: healthRes.status === 'ok' ? 'Healthy' : 'Warning',
+                    totalLogs: healthRes.statistics?.total_logs || 0
+                });
+            }
+        } catch (err) {
+            console.error("Refresh error after assignment:", err);
+        }
+    }
+}}
+            />
+        </div >
     );
 }
 
-function AdminStatCard({ label, value, icon, trend, color }: { label: string, value: string, icon: React.ReactNode, trend: string, color: 'teal' | 'cyan' | 'emerald' | 'indigo' }) {
-    const colors = {
-        teal: 'from-teal-500/20 to-teal-500/5 text-teal-500',
-        cyan: 'from-cyan-500/20 to-cyan-500/5 text-cyan-500',
-        emerald: 'from-emerald-500/20 to-emerald-500/5 text-emerald-500',
-        indigo: 'from-indigo-500/20 to-indigo-500/5 text-indigo-500',
-    };
-
+function StatCard({ label, value, icon, trend }: { label: string, value: string, icon: React.ReactNode, trend: string }) {
     return (
-        <Card className="bg-[#0f1117] border-white/5 p-8" hover={false}>
-            <div className="flex justify-between items-start mb-6">
-                <div className={cn("p-4 rounded-2xl bg-gradient-to-b border border-white/5 shadow-inner", colors[color])}>
+        <div className="bg-[#181818] border border-gray-800 rounded-lg p-4">
+            <div className="flex justify-between items-start mb-3">
+                <div className="p-2 rounded-lg bg-gray-800 text-gray-400">
                     {icon}
                 </div>
                 <div className={cn(
-                    "text-[10px] font-black px-3 py-1 rounded-full border",
-                    trend.includes('+') ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" :
-                        trend.includes('N/A') ? "bg-slate-800 text-slate-500 border-white/5" : "bg-teal-500/10 text-teal-400 border-teal-500/20"
+                    "text-xs font-medium px-2 py-0.5 rounded-md",
+                    trend.includes('+') ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-gray-800 text-gray-400 border border-gray-700"
                 )}>
                     {trend}
                 </div>
             </div>
             <div className="space-y-1">
-                <div className="text-4xl font-black text-white tracking-tighter font-mono">{value}</div>
-                <div className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">{label}</div>
-            </div>
-        </Card>
-    );
-}
-
-function ServiceStatus({ label, status, speed }: { label: string, status: string, speed: string }) {
-    const isOk = status.toLowerCase() === 'healthy' || status.toLowerCase() === 'connected' || status.toLowerCase() === 'active' || status.toLowerCase() === 'nominal';
-    return (
-        <div className="flex items-center justify-between p-4 bg-white/[0.02] rounded-2xl border border-white/5">
-            <div className="flex items-center space-x-3">
-                <div className={cn("w-2 h-2 rounded-full", isOk ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-orange-500")} />
-                <span className="text-xs font-bold text-slate-300">{label}</span>
-            </div>
-            <div className="flex flex-col items-end">
-                <span className={cn("text-[10px] font-black uppercase tracking-widest", isOk ? "text-emerald-500" : "text-orange-500")}>{status}</span>
-                <span className="text-[8px] text-slate-600 font-mono">{speed}</span>
+                <div className="text-2xl font-bold text-white">{value}</div>
+                <div className="text-sm text-gray-500">{label}</div>
             </div>
         </div>
     );
 }
 
-function DetailItem({ label, value }: { label: string, value: string }) {
+function DetailRow({ label, value }: { label: string, value: string }) {
     return (
-        <div className="flex justify-between items-center text-left">
-            <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">{label}</span>
-            <span className="text-xs font-bold text-slate-300">{value || 'N/A'}</span>
+        <div className="flex justify-between items-center py-2">
+            <span className="text-sm text-gray-500">{label}</span>
+            <span className="text-sm font-medium text-white">{value || 'N/A'}</span>
         </div>
     );
 }
 
-function MiniMetric({ label, value, color }: { label: string, value: any, color: 'teal' | 'rose' | 'cyan' | 'indigo' }) {
-    const colors = {
-        teal: 'text-teal-500',
-        rose: 'text-rose-500',
-        cyan: 'text-cyan-500',
-        indigo: 'text-indigo-500'
-    };
+function MetricBox({ label, value }: { label: string, value: any }) {
     return (
-        <div className="p-3 bg-white/[0.02] rounded-xl border border-white/5">
-            <div className="text-[8px] font-black text-slate-600 uppercase tracking-[0.1em] mb-1">{label}</div>
-            <div className={cn("text-sm font-black", colors[color])}>{value}</div>
+        <div className="p-2 bg-gray-900/50 rounded-md border border-gray-800">
+            <div className="text-xs text-gray-500 mb-0.5">{label}</div>
+            <div className="text-sm font-semibold text-white">{value}</div>
         </div>
     );
 }
@@ -693,81 +680,80 @@ function CreateCaregiverModal({ isOpen, onClose, onSuccess }: { isOpen: boolean,
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         onClick={onClose}
-                        className="absolute inset-0 bg-slate-950/80 backdrop-blur-md"
+                        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
                     />
                     <motion.div
-                        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                        initial={{ opacity: 0, scale: 0.95, y: 20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                        className="relative w-full max-w-lg bg-[#0f1117] border border-white/10 rounded-[40px] shadow-2xl overflow-hidden p-10"
+                        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                        className="relative w-full max-w-lg bg-[#181818] border border-gray-800 rounded-lg shadow-2xl overflow-hidden p-6"
                     >
                         <button
                             onClick={onClose}
-                            className="absolute top-8 right-8 text-slate-500 hover:text-white transition-colors"
+                            className="absolute top-4 right-4 text-gray-500 hover:text-gray-300 transition-colors"
                         >
-                            <X size={24} />
+                            <X size={20} />
                         </button>
 
-                        <div className="mb-8">
-                            <h2 className="text-3xl font-black text-white tracking-tight mb-2">Provision Node</h2>
-                            <p className="text-slate-500 font-medium">Create a new administrative caregiver profile.</p>
+                        <div className="mb-6">
+                            <h2 className="text-xl font-bold text-white mb-1">Add New Caregiver</h2>
+                            <p className="text-sm text-gray-500">Create a new caregiver account</p>
                         </div>
 
                         {error && (
-                            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-500 text-xs font-bold flex items-center">
-                                <AlertCircle size={16} className="mr-3 shrink-0" />
+                            <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm flex items-center">
+                                <AlertCircle size={16} className="mr-2 shrink-0" />
                                 {error}
                             </div>
                         )}
 
-                        <form onSubmit={handleSubmit} className="space-y-6">
+                        <form onSubmit={handleSubmit} className="space-y-4">
                             <Input
-                                label="Full Legal Name"
+                                label="Full Name"
                                 placeholder="Dr. Sarah Johnson"
                                 value={formData.full_name}
                                 onChange={e => setFormData({ ...formData, full_name: e.target.value })}
                                 icon={<User size={18} />}
-                                className="bg-white/5 border-white/5 text-white placeholder:text-slate-600 focus:border-cyan-500"
+                                className="bg-gray-900/50 border-gray-800 text-white placeholder:text-gray-600"
                                 required
                             />
                             <Input
-                                label="Clinical Email"
+                                label="Email Address"
                                 type="email"
-                                placeholder="s.johnson@hospital.com"
+                                placeholder="sarah.johnson@hospital.com"
                                 value={formData.email}
                                 onChange={e => setFormData({ ...formData, email: e.target.value })}
                                 icon={<Mail size={18} />}
-                                className="bg-white/5 border-white/5 text-white placeholder:text-slate-600 focus:border-cyan-500"
+                                className="bg-gray-900/50 border-gray-800 text-white placeholder:text-gray-600"
                                 required
                             />
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <Input
-                                    label="Access Password"
+                                    label="Password"
                                     type="password"
                                     placeholder="••••••••"
                                     value={formData.password}
                                     onChange={e => setFormData({ ...formData, password: e.target.value })}
-                                    icon={<LockIcon size={18} />}
-                                    className="bg-white/5 border-white/5 text-white placeholder:text-slate-600 focus:border-cyan-500"
+                                    className="bg-gray-900/50 border-gray-800 text-white placeholder:text-gray-600"
                                     required
                                 />
                                 <Input
-                                    label="Node Contact"
+                                    label="Phone Number"
                                     type="tel"
                                     placeholder="+1 (555) 000-0000"
                                     value={formData.phone}
                                     onChange={e => setFormData({ ...formData, phone: e.target.value })}
                                     icon={<Phone size={18} />}
-                                    className="bg-white/5 border-white/5 text-white placeholder:text-slate-600 focus:border-cyan-500"
+                                    className="bg-gray-900/50 border-gray-800 text-white placeholder:text-gray-600"
                                 />
                             </div>
 
                             <Button
                                 type="submit"
                                 isLoading={loading}
-                                className="w-full mt-4 bg-cyan-600 hover:bg-cyan-500 text-white font-black py-4 rounded-2xl text-[10px] uppercase tracking-[0.3em] transition-all shadow-lg shadow-cyan-600/20"
+                                className="w-full mt-4 bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2.5 rounded-md"
                             >
-                                Authorize & Create Node
+                                Create Caregiver Account
                             </Button>
                         </form>
                     </motion.div>
@@ -826,79 +812,74 @@ function AssignCaregiverModal({ isOpen, onClose, onSuccess, patientId }: { isOpe
     return (
         <AnimatePresence>
             {isOpen && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 pb-24 md:pb-6">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         onClick={onClose}
-                        className="absolute inset-0 bg-[#0a0c10]/95 backdrop-blur-xl"
+                        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
                     />
                     <motion.div
                         initial={{ opacity: 0, scale: 0.95, y: 20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                        className="relative w-full max-w-xl bg-[#0f1117] border border-white/5 rounded-[32px] p-10 shadow-2xl overflow-hidden"
+                        className="relative w-full max-w-xl bg-[#181818] border border-gray-800 rounded-lg p-6 shadow-2xl overflow-hidden"
                     >
-                        <div className="absolute top-0 right-0 p-8">
-                            <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors">
-                                <X size={24} />
-                            </button>
+                        <button onClick={onClose} className="absolute top-4 right-4 text-gray-500 hover:text-gray-300 transition-colors">
+                            <X size={20} />
+                        </button>
+
+                        <div className="mb-6">
+                            <h2 className="text-xl font-bold text-white mb-1">Assign Caregiver</h2>
+                            <p className="text-sm text-gray-500">Select a caregiver to assign to this patient</p>
                         </div>
 
-                        <div className="mb-10">
-                            <div className="flex items-center space-x-3 text-cyan-500 font-black text-[10px] uppercase tracking-[0.3em] mb-3">
-                                <Share2 size={16} />
-                                <span>Network Orchestration</span>
-                            </div>
-                            <h2 className="text-3xl font-black text-white tracking-tight">Assign Caretaker</h2>
-                        </div>
-
-                        <form onSubmit={handleSubmit} className="space-y-6">
-                            <div className="space-y-3">
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Select Professional Node</label>
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-400">Select Caregiver</label>
                                 {fetching ? (
-                                    <div className="py-8 text-center text-[10px] text-slate-600 font-black uppercase tracking-widest border border-white/5 rounded-2xl">Scanning Network...</div>
+                                    <div className="py-8 text-center text-sm text-gray-500 border border-gray-800 rounded-lg">Loading caregivers...</div>
                                 ) : (
-                                    <div className="grid grid-cols-1 gap-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                                    <div className="grid grid-cols-1 gap-2 max-h-[300px] overflow-y-auto">
                                         {caregivers.map(c => (
                                             <button
                                                 key={c.id}
                                                 type="button"
                                                 onClick={() => setSelectedId(c.id)}
                                                 className={cn(
-                                                    "flex items-center justify-between p-4 rounded-2xl border transition-all text-left",
+                                                    "flex items-center justify-between p-3 rounded-lg border transition-all text-left",
                                                     selectedId === c.id
-                                                        ? "bg-cyan-500/10 border-cyan-500/50 text-white"
-                                                        : "bg-white/[0.02] border-white/5 text-slate-400 hover:border-white/10"
+                                                        ? "bg-emerald-500/10 border-emerald-500/30 text-white"
+                                                        : "bg-gray-900/50 border-gray-800 text-gray-400 hover:border-gray-700"
                                                 )}
                                             >
-                                                <div className="flex items-center space-x-4">
+                                                <div className="flex items-center space-x-3">
                                                     <div className={cn(
-                                                        "w-10 h-10 rounded-xl flex items-center justify-center font-black",
-                                                        selectedId === c.id ? "bg-cyan-500 text-slate-900" : "bg-white/5 text-slate-500"
+                                                        "w-8 h-8 rounded-full flex items-center justify-center font-semibold text-sm",
+                                                        selectedId === c.id ? "bg-emerald-600 text-white" : "bg-gray-800 text-gray-400"
                                                     )}>
                                                         {c.full_name?.charAt(0)}
                                                     </div>
                                                     <div>
-                                                        <div className="font-bold text-sm">{c.full_name}</div>
-                                                        <div className="text-[10px] font-mono opacity-50 lowercase">{c.email}</div>
+                                                        <div className="text-sm font-medium">{c.full_name}</div>
+                                                        <div className="text-xs text-gray-500">{c.email}</div>
                                                     </div>
                                                 </div>
-                                                {selectedId === c.id && <CheckCircle2 size={18} className="text-cyan-500" />}
+                                                {selectedId === c.id && <CheckCircle2 size={18} className="text-emerald-400" />}
                                             </button>
                                         ))}
                                     </div>
                                 )}
                             </div>
 
-                            <div className="space-y-3">
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Assignment Parameters (Notes)</label>
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-gray-400">Assignment Notes (Optional)</label>
                                 <textarea
                                     value={notes}
                                     onChange={e => setNotes(e.target.value)}
                                     placeholder="Enter specific care instructions or role details..."
-                                    className="w-full bg-white/5 border border-white/5 rounded-2xl px-6 py-4 text-white text-sm focus:outline-none focus:border-cyan-500 transition-all min-h-[100px] resize-none"
+                                    className="w-full bg-gray-900/50 border border-gray-800 rounded-lg px-4 py-3 text-white text-sm focus:outline-none focus:border-emerald-500 transition-all min-h-[100px] resize-none placeholder:text-gray-600"
                                 />
                             </div>
 
@@ -906,9 +887,9 @@ function AssignCaregiverModal({ isOpen, onClose, onSuccess, patientId }: { isOpe
                                 type="submit"
                                 isLoading={loading}
                                 disabled={!selectedId}
-                                className="w-full mt-4 bg-cyan-600 hover:bg-cyan-500 text-white font-black py-4 rounded-2xl text-[10px] uppercase tracking-[0.3em] transition-all shadow-lg shadow-cyan-600/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="w-full mt-4 bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2.5 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                Activate Linkage Protocol
+                                Assign Caregiver
                             </Button>
                         </form>
                     </motion.div>
