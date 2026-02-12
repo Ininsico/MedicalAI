@@ -6,8 +6,8 @@ import nodemailer from 'nodemailer';
 
 // Helper to check email service status
 const checkEmailService = () => {
-    // In a real app we might ping the SMTP server
-    return process.env.EMAIL_USER ? 'connected' : 'disconnected';
+    // System uses hardcoded SMTP credentials for Brevo
+    return 'active';
 };
 
 

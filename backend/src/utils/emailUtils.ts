@@ -5,20 +5,10 @@ import jwt from 'jsonwebtoken';
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this';
 const JWT_EXPIRY = '7d';
 
-// Email transporter configuration (Brevo)
-const transporter = nodemailer.createTransport({
-    host: 'smtp-relay.brevo.com',
-    port: 587,
-    secure: false, // true for 465, false for other ports
-    auth: {
-        user: 'a20139001@smtp-brevo.com',
-        pass: 'xsmtpsib-d67f7426e822f657dab90beb41af941bdfc9cda5ab512407fb8ad404145f72ea-qrACvGuf0l5yjBuq'
-    },
-    tls: {
-        rejectUnauthorized: false // Only for development
-    }
-});
-
+// Email configuration (Brevo API)
+const BREVO_API_KEY = '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';
+const SENDER_EMAIL = 'ininsico@gmail.com';
+const SENDER_NAME = 'Arslan Rathore';
 
 /**
  * Generates a JSON Web Token (JWT) for a user.
@@ -37,7 +27,7 @@ export const generateToken = (userId: string, role: string, email: string) => {
 };
 
 /**
- * Sends an email using the configured SMTP transporter.
+ * Sends an email using the Brevo REST API.
  * 
  * @param to - Recipient email address.
  * @param subject - Email subject line.
@@ -46,17 +36,32 @@ export const generateToken = (userId: string, role: string, email: string) => {
  */
 export const sendEmail = async (to: string, subject: string, html: string) => {
     try {
-        const mailOptions = {
-            from: '"Arslan Rathore" <ininsico@gmail.com>', // Verified sender
-            to,
-            subject,
-            html
-        };
+        const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+            method: 'POST',
+            headers: {
+                'accept': 'application/json',
+                'api-key': BREVO_API_KEY,
+                'content-type': 'application/json'
+            },
+            body: JSON.stringify({
+                sender: {
+                    name: SENDER_NAME,
+                    email: SENDER_EMAIL
+                },
+                to: [{ email: to }],
+                subject: subject,
+                htmlContent: html
+            })
+        });
 
-        await transporter.sendMail(mailOptions);
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(JSON.stringify(errorData));
+        }
+
         return true;
     } catch (error) {
-        console.error('❌ EMAIL SENDING FAILED:', error);
+        console.error('❌ EMAIL SENDING FAILED (API):', error);
         return false;
     }
 };
