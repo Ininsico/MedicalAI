@@ -660,7 +660,7 @@ export const sendInvitation = async (req: Request, res: Response) => {
             .single();
 
         // Send invitation email
-        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+        const frontendUrl = process.env.FRONTEND_URL || 'https://medical-ai-uh9j.vercel.app';
         const inviteLink = `${frontendUrl}/signup/caregiver?token=${invitationToken}`;
 
         const emailHtml = caregiverInvitationTemplate(

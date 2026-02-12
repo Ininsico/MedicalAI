@@ -3,6 +3,41 @@ import { supabase } from '../lib/supabaseClient';
 
 const GROQ_API_KEY = process.env.GROQ_API_KEY || '';
 
+/**
+ * @swagger
+ * /api/ai/patient-summary:
+ *   post:
+ *     summary: Generate a structured AI summary of patient health logs
+ *     tags: [AI & Analysis]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - patientId
+ *             properties:
+ *               patientId:
+ *                 type: string
+ *               startDate:
+ *                 type: string
+ *                 format: date
+ *               endDate:
+ *                 type: string
+ *                 format: date
+ *     responses:
+ *       200:
+ *         description: Professional AI-generated Markdown summary
+ *       400:
+ *         description: Missing patientId or no logs found in range
+ *       404:
+ *         description: Patient not found
+ *       500:
+ *         description: Internal server error or AI API failure
+ */
 export const generatePatientSummary = async (req: Request, res: Response) => {
     try {
         const { patientId, startDate, endDate } = req.body;

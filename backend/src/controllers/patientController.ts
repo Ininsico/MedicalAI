@@ -387,6 +387,62 @@ export const getCaregivers = async (req: Request, res: Response) => {
     }
 };
 
+/**
+ * @swagger
+ * /api/patients/{patientId}/logs/{logId}:
+ *   put:
+ *     summary: Update an existing daily log entry (Patient or Admin only)
+ *     tags: [Patient]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: patientId
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: logId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               mood:
+ *                 type: string
+ *               symptoms:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               medication_taken:
+ *                 type: boolean
+ *               medication_notes:
+ *                 type: string
+ *               sleep_hours:
+ *                 type: number
+ *               activity_level:
+ *                 type: string
+ *               tremor_severity:
+ *                 type: integer
+ *               stiffness_severity:
+ *                 type: integer
+ *               notes:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Daily log updated successfully
+ *       404:
+ *         description: Log not found
+ *       403:
+ *         description: Not authorized
+ *       500:
+ *         description: Internal server error
+ */
 export const updateDailyLog = async (req: Request, res: Response) => {
     try {
         const patientId = req.params.patientId as string;

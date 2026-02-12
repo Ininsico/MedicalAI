@@ -5,15 +5,19 @@ const options: swaggerJsdoc.Options = {
     definition: {
         openapi: '3.0.0',
         info: {
-            title: 'Medical AI API Documentation',
-            version: '1.0.0',
-            description: 'API documentation for the Medical AI Healthcare Management System backend.',
+            title: 'SSI: Symptom Intelligence API Documentation',
+            version: '1.2.0',
+            description: 'Advanced RESTful API documentation for the Medical AI / Symptom Intelligence Ecosystem. Supporting Patients, Caregivers, and Administrative governance.',
             contact: {
-                name: 'API Support',
-                email: 'support@codematics.com',
+                name: 'System Administrator',
+                email: 'ininsico@gmail.com',
             },
         },
         servers: [
+            {
+                url: 'https://medical-ai-uh9j.vercel.app',
+                description: 'Production server',
+            },
             {
                 url: 'http://localhost:5001',
                 description: 'Development server',
