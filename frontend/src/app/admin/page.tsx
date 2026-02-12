@@ -374,14 +374,7 @@ export default function AdminPage() {
                                         <DetailRow label="Joined" value={new Date(selectedPatient.created_at).toLocaleDateString()} />
                                     </div>
 
-                                    <div className="mt-6 pt-6 border-t border-gray-800 space-y-2">
-                                        <button className="w-full px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-medium rounded-md transition-colors">
-                                            Reset Password
-                                        </button>
-                                        <button className="w-full px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 text-sm font-medium rounded-md transition-colors">
-                                            Deactivate Account
-                                        </button>
-                                    </div>
+
                                 </div>
 
                                 {/* Details Panel */}
