@@ -36,6 +36,22 @@ export default function PatientDetailPage() {
     const [generatingReport, setGeneratingReport] = useState(false);
     const [showReport, setShowReport] = useState(false);
     const [reportData, setReportData] = useState<any>(null);
+    const [timeFilter, setTimeFilter] = useState<'all' | 'daily' | 'weekly' | 'monthly'>('all');
+
+    const filteredLogs = logs.filter(log => {
+        if (timeFilter === 'all') return true;
+        const logDate = new Date(log.date);
+        logDate.setHours(0, 0, 0, 0);
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+        const diffTime = Math.abs(now.getTime() - logDate.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        if (timeFilter === 'daily') return diffDays <= 1;
+        if (timeFilter === 'weekly') return diffDays <= 7;
+        if (timeFilter === 'monthly') return diffDays <= 30;
+        return true;
+    });
 
     useEffect(() => {
         async function fetchDetails() {
@@ -284,40 +300,43 @@ export default function PatientDetailPage() {
                         </div>
                     </div>
 
-                    {/* Clinical Notes */}
-                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-                        <div className="flex items-center justify-between mb-4">
-                            <h2 className="text-lg font-bold text-slate-800">Clinical Notes</h2>
-                            <button className="text-sm font-semibold text-teal-700 hover:text-teal-800">Edit</button>
-                        </div>
-                        <div className="prose prose-sm text-slate-600 bg-yellow-50/50 p-4 rounded-xl border border-yellow-100">
-                            {patient.clinical_notes ? (
-                                <p>{patient.clinical_notes}</p>
-                            ) : (
-                                <p className="italic text-slate-400">No clinical notes recorded.</p>
-                            )}
-                        </div>
-                    </div>
+
                 </div>
 
                 {/* Right Column: Historical Data */}
-                <div className="lg:col-span-2 print:col-span-3">
-                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden print:shadow-none print:border-none">
-                        <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-white">
+                <div className="lg:col-span-2 space-y-6">
+                    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                        <div className="p-4 sm:p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                             <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                                <Calendar size={20} className="text-teal-600" />
+                                <FileText size={20} className="text-teal-600" />
                                 Medical Logs
                             </h2>
-                            <div className="flex gap-2 print:hidden">
-                                <select className="text-sm border-slate-200 border rounded-lg px-3 py-1.5 bg-slate-50 text-slate-700 font-medium focus:outline-none focus:ring-1 focus:ring-teal-500">
-                                    <option>Viewing: All Time</option>
-                                    <option>Last 30 Days</option>
-                                </select>
+
+                            <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 w-fit">
+                                {[
+                                    { id: 'all', label: 'All Time' },
+                                    { id: 'daily', label: 'Daily' },
+                                    { id: 'weekly', label: 'Weekly' },
+                                    { id: 'monthly', label: 'Monthly' }
+                                ].map((t) => (
+                                    <button
+                                        key={t.id}
+                                        onClick={() => setTimeFilter(t.id as any)}
+                                        className={cn(
+                                            "px-3 py-1.5 text-xs font-bold rounded-lg transition-all",
+                                            timeFilter === t.id
+                                                ? "bg-white text-teal-700 shadow-sm"
+                                                : "text-slate-500 hover:text-slate-700"
+                                        )}
+                                    >
+                                        {t.label}
+                                    </button>
+                                ))}
                             </div>
                         </div>
 
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left border-collapse">
+                        <div className="overflow-x-auto min-h-[300px]">
+                            <table className="w-full text-left border-collapse min-w-[700px]">
                                 <thead>
                                     <tr className="bg-slate-50 border-b border-slate-200">
                                         <th className="py-4 px-6 text-xs font-bold text-slate-500 uppercase tracking-wider">Date</th>
@@ -329,15 +348,20 @@ export default function PatientDetailPage() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
-                                    {logs.length === 0 ? (
+                                    {filteredLogs.length === 0 ? (
                                         <tr>
-                                            <td colSpan={6} className="py-16 text-center text-slate-400">No logs recorded yet.</td>
+                                            <td colSpan={6} className="py-16 text-center text-slate-400">
+                                                <div className="flex flex-col items-center gap-2">
+                                                    <Clock size={32} className="text-slate-200" />
+                                                    <p>No logs found for this period.</p>
+                                                </div>
+                                            </td>
                                         </tr>
                                     ) : (
-                                        logs.map((log, i) => (
+                                        filteredLogs.map((log, i) => (
                                             <tr key={i} className="hover:bg-slate-50 transition-colors group">
                                                 <td className="py-4 px-6">
-                                                    <div className="font-bold text-slate-900">{new Date(log.date).toLocaleDateString()}</div>
+                                                    <div className="font-bold text-slate-900 whitespace-nowrap">{new Date(log.date).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}</div>
                                                     <div className="text-xs text-slate-500 font-medium flex items-center gap-1 mt-0.5">
                                                         <Clock size={10} />
                                                         {new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -345,12 +369,12 @@ export default function PatientDetailPage() {
                                                 </td>
                                                 <td className="py-4 px-6 text-center">
                                                     {log.medication_taken ? (
-                                                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-100">
-                                                            <CheckCircle2 size={12} /> Taken
+                                                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-100">
+                                                            <CheckCircle2 size={10} /> Taken
                                                         </span>
                                                     ) : (
-                                                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-rose-50 text-rose-700 text-xs font-bold border border-rose-100">
-                                                            <AlertCircle size={12} /> Missed
+                                                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-rose-50 text-rose-700 text-[10px] font-bold border border-rose-100">
+                                                            <AlertCircle size={10} /> Missed
                                                         </span>
                                                     )}
                                                 </td>
@@ -374,11 +398,11 @@ export default function PatientDetailPage() {
                                                                 "w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs border",
                                                                 (log.tremor_severity || 0) > 5 ? "bg-amber-50 text-amber-700 border-amber-200" : "bg-teal-50 text-teal-700 border-teal-200"
                                                             )}>{log.tremor_severity || 0}</span>
-                                                            <span className="text-[10px] text-slate-400 mt-1 font-medium">Tremor</span>
+                                                            <span className="text-[10px] text-slate-400 mt-1 font-medium">T</span>
                                                         </div>
                                                         <div className="flex flex-col items-center">
                                                             <span className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs bg-slate-50 text-slate-700 border border-slate-200">{log.stiffness_severity || 0}</span>
-                                                            <span className="text-[10px] text-slate-400 mt-1 font-medium">Stiff</span>
+                                                            <span className="text-[10px] text-slate-400 mt-1 font-medium">S</span>
                                                         </div>
                                                     </div>
                                                 </td>
@@ -386,7 +410,7 @@ export default function PatientDetailPage() {
                                                     <span className="font-bold text-xs uppercase text-slate-700">{log.mood}</span>
                                                 </td>
                                                 <td className="py-4 px-6">
-                                                    <p className="text-xs text-slate-600 leading-relaxed line-clamp-2" title={log.notes}>
+                                                    <p className="text-xs text-slate-600 leading-relaxed max-w-xs" title={log.notes}>
                                                         {log.notes || <span className="text-slate-300 italic">No notes</span>}
                                                     </p>
                                                 </td>

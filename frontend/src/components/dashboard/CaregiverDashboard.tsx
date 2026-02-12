@@ -126,20 +126,28 @@ export default function CaregiverDashboard() {
 
                 {/* Left Column: Patient Grid */}
                 <div className="xl:col-span-2 space-y-6">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                         <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
                             <Users size={20} className="text-teal-600" />
                             Your Patients
                         </h2>
-                        <div className="relative w-full max-w-xs">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                            <input
-                                type="text"
-                                placeholder="Search by name..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all shadow-sm"
-                            />
+                        <div className="relative w-full max-w-sm flex gap-2">
+                            <div className="relative flex-1">
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                                <input
+                                    type="text"
+                                    placeholder="Search by patient name..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all shadow-sm"
+                                />
+                            </div>
+                            <button
+                                className="px-4 py-2.5 bg-slate-900 text-white rounded-xl text-sm font-semibold hover:bg-teal-600 transition-all shadow-md active:scale-95"
+                                onClick={() => {/* Filtering is already reactive */ }}
+                            >
+                                Search
+                            </button>
                         </div>
                     </div>
 
@@ -303,8 +311,12 @@ function PatientCard({ data, index }: { data: any, index: number }) {
                     )}>
                         {status}
                     </span>
-                    <span className="text-[10px] text-slate-400 mt-1 font-medium">
-                        Updated: {lastLog ? new Date(lastLog.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Never'}
+                    <span className="text-[10px] text-slate-400 mt-1 font-medium italic">
+                        {lastLog ? (
+                            new Date(lastLog.created_at).toDateString() === new Date().toDateString()
+                                ? `Updated today at ${new Date(lastLog.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                                : `Last log: ${new Date(lastLog.date || lastLog.created_at).toLocaleDateString([], { month: 'short', day: 'numeric' })}`
+                        ) : 'No records yet'}
                     </span>
                 </div>
             </div>
