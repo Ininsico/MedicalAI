@@ -240,7 +240,7 @@ function PatientCard({ patient, notes }: { patient: any, notes: string }) {
                 <MiniMetric label="Mood" value={lastLog?.mood || 'Pending'} color={lastLog?.mood === 'bad' ? 'rose' : 'teal'} />
                 <MiniMetric label="Medication" value={lastLog?.medication_taken === true ? 'Taken' : lastLog?.medication_taken === false ? 'Missed' : 'N/A'} color={lastLog?.medication_taken === false ? 'rose' : 'emerald'} />
                 <MiniMetric label="Status" value={lastLog ? 'Active' : 'Offline'} color={lastLog ? 'teal' : 'rose'} />
-                <MiniMetric label="Since" value={new Date(patient.created_at).getFullYear()} color="cyan" />
+                <MiniMetric label="Since" value={patient.created_at ? new Date(patient.created_at).getFullYear() || 'N/A' : 'N/A'} color="cyan" />
             </div>
 
             <div className="mt-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
@@ -271,10 +271,13 @@ function MiniMetric({ label, value, color }: { label: string, value: any, color:
         emerald: 'text-emerald-600'
     };
 
+    // Handle NaN and ensure value is always a valid string or number
+    const displayValue = (typeof value === 'number' && isNaN(value)) ? 'N/A' : (value ?? 'N/A');
+
     return (
         <div className="space-y-1">
             <div className="text-xs text-gray-500">{label}</div>
-            <div className={cn("text-sm font-semibold", colors[color])}>{value}</div>
+            <div className={cn("text-sm font-semibold", colors[color])}>{displayValue}</div>
         </div>
     );
 }

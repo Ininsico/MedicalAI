@@ -54,6 +54,14 @@ export const api = {
         getPatientLogs: (patientId: string) => request<any>(`/caregiver/patients/${patientId}/logs`, 'GET'),
         getPatientDetails: (patientId: string) => request<any>(`/caregiver/patients/${patientId}`, 'GET'),
         generateReport: (patientId: string) => request<any>(`/caregiver/patients/${patientId}/report`, 'GET'),
+        // Invitation system
+        sendInvitation: (data: { inviteeEmail: string; personalMessage?: string }) =>
+            request<any>('/caregiver/invite', 'POST', data),
+        getInvitations: () => request<any>('/caregiver/invitations', 'GET'),
+        cancelInvitation: (invitationId: string) => request<any>(`/caregiver/invitations/${invitationId}`, 'DELETE'),
+        verifyInvitation: (token: string) => request<any>(`/caregiver/verify-invitation/${token}`, 'GET'),
+        acceptInvitation: (data: { token: string; email: string; password: string; full_name: string; phone?: string }) =>
+            request<any>('/caregiver/accept-invitation', 'POST', data),
     },
 
     notifications: {

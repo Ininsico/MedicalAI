@@ -81,6 +81,27 @@ export const authorizeCaregiver = async (req: Request, res: Response, next: Next
 };
 
 /**
+ * Authorization middleware for Patient role.
+ * Ensures the authenticated user has the 'patient' role.
+ */
+export const authorizePatient = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const { data: user, error } = await supabaseAdmin
+            .from('users')
+            .select('role')
+            .eq('id', req.user.userId)
+            .single();
+
+        if (error || !user || (user.role !== 'patient' && user.role !== 'admin')) {
+            return res.status(403).json({ error: 'Patient or Admin access required' });
+        }
+        next();
+    } catch (error) {
+        return res.status(500).json({ error: 'Authorization error' });
+    }
+};
+
+/**
  * Check if the authenticated caregiver is assigned to the specified patient.
  * Admins bypass this check.
  */

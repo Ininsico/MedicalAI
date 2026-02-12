@@ -14,6 +14,7 @@ import {
     Move,
     Sparkles,
     Brain,
+    Users
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion } from 'framer-motion';
@@ -54,13 +55,13 @@ export default function PatientDashboard({ lastCheckIn, insights, averages, logs
 
             <div className="relative space-y-6">
                 {/* Premium Grid Layout */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
 
                     {/* Compact Status Card */}
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="lg:col-span-7"
+                        className="col-span-1 lg:col-span-7"
                     >
                         <div className={cn(
                             "relative overflow-hidden rounded-2xl border transition-all duration-500 group",
@@ -68,14 +69,13 @@ export default function PatientDashboard({ lastCheckIn, insights, averages, logs
                                 ? "bg-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] border-teal-100/50"
                                 : "bg-gradient-to-br from-white to-teal-50/30 shadow-[0_8px_30px_rgb(0,0,0,0.08)] border-teal-200/50"
                         )}>
-                            {/* Subtle pattern overlay */}
                             <div className="absolute inset-0 opacity-[0.02]" style={{
                                 backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23000000' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
                             }} />
 
-                            <div className="relative p-6">
-                                <div className="flex items-start justify-between gap-4">
-                                    <div className="flex items-start gap-4 flex-1">
+                            <div className="relative p-5 sm:p-6">
+                                <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
+                                    <div className="flex items-start gap-4 flex-1 w-full">
                                         <div className={cn(
                                             "p-3 rounded-xl shrink-0 shadow-lg",
                                             isToday
@@ -88,8 +88,8 @@ export default function PatientDashboard({ lastCheckIn, insights, averages, logs
                                             }
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <h3 className="text-xl font-bold text-slate-900">
+                                            <div className="flex flex-wrap items-center gap-2 mb-1">
+                                                <h3 className="text-lg sm:text-xl font-bold text-slate-900">
                                                     {isToday ? "Check-in Complete" : "Daily Check-in"}
                                                 </h3>
                                                 {isToday && (
@@ -107,11 +107,11 @@ export default function PatientDashboard({ lastCheckIn, insights, averages, logs
                                             </p>
 
                                             {!isToday && (
-                                                <Link href="/dashboard/check-in">
+                                                <Link href="/dashboard/check-in" className="block sm:inline-block w-full sm:w-auto">
                                                     <motion.button
                                                         whileHover={{ scale: 1.01 }}
                                                         whileTap={{ scale: 0.99 }}
-                                                        className="mt-4 px-5 py-2.5 bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-700 hover:to-teal-600 text-white text-sm font-semibold rounded-xl shadow-lg shadow-teal-600/25 hover:shadow-xl hover:shadow-teal-600/30 transition-all duration-300 flex items-center gap-2 group"
+                                                        className="mt-4 w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-700 hover:to-teal-600 text-white text-sm font-semibold rounded-xl shadow-lg shadow-teal-600/25 hover:shadow-xl hover:shadow-teal-600/30 transition-all duration-300 flex items-center justify-center gap-2 group"
                                                     >
                                                         <span>Start Assessment</span>
                                                         <ArrowRight size={16} className="group-hover:translate-x-0.5 transition-transform" />
@@ -126,11 +126,11 @@ export default function PatientDashboard({ lastCheckIn, insights, averages, logs
                     </motion.div>
 
                     {/* Quick Stats Grid */}
-                    <div className="lg:col-span-5 grid grid-cols-2 gap-6">
+                    <div className="col-span-1 lg:col-span-5 grid grid-cols-2 gap-4 sm:gap-6">
                         <PremiumMetricCard
                             label="Weekly Check-ins"
                             value={logs?.length || 0}
-                            maxValue={30}
+                            maxValue={7}
                             delay={0.1}
                         />
                         <PremiumMetricCard
@@ -142,15 +142,39 @@ export default function PatientDashboard({ lastCheckIn, insights, averages, logs
                         />
                     </div>
 
+                    {/* Caregiver Quick Link */}
+                    <Link href="/dashboard/caregivers/manage" className="col-span-1 lg:col-span-12 block group">
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.2 }}
+                            className="relative overflow-hidden rounded-2xl bg-white border border-slate-200/50 shadow-sm hover:shadow-md transition-all p-4 flex items-center justify-between"
+                        >
+                            <div className="flex items-center gap-4">
+                                <div className="p-3 bg-teal-50 rounded-xl text-teal-600">
+                                    <Users size={24} />
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-gray-900">Caregiver Access</h3>
+                                    <p className="text-sm text-gray-500">Invite family or friends to monitor your health</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2 px-4 py-2 bg-teal-50 text-teal-700 font-semibold rounded-lg group-hover:bg-teal-100 transition-colors">
+                                <span>Manage</span>
+                                <ArrowRight size={16} />
+                            </div>
+                        </motion.div>
+                    </Link>
+
                     {/* AI Insights - Professional Design */}
                     {insights && insights.length > 0 && (
                         <motion.div
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 0.2 }}
-                            className="lg:col-span-12"
+                            className="col-span-1 lg:col-span-12"
                         >
-                            <div className="relative overflow-hidden rounded-2xl bg-white border border-slate-200/50 shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-6">
+                            <div className="relative overflow-hidden rounded-2xl bg-white border border-slate-200/50 shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-5 sm:p-6">
                                 <div className="flex items-center gap-3 mb-5">
                                     <div className="p-2.5 bg-gradient-to-br from-teal-500 to-teal-600 rounded-xl shadow-lg shadow-teal-600/25">
                                         <Brain size={20} className="text-white" />
@@ -172,7 +196,7 @@ export default function PatientDashboard({ lastCheckIn, insights, averages, logs
                                             className="group p-4 bg-slate-50/50 hover:bg-teal-50/50 rounded-xl border border-slate-200/50 hover:border-teal-200/50 transition-all duration-300"
                                         >
                                             <div className="flex items-start gap-3">
-                                                <div className="p-1.5 bg-teal-100 rounded-lg mt-0.5">
+                                                <div className="p-1.5 bg-teal-100 rounded-lg mt-0.5 shrink-0">
                                                     <Activity size={14} className="text-teal-600" />
                                                 </div>
                                                 <p className="text-sm text-slate-700 leading-relaxed flex-1">{insight}</p>
@@ -185,7 +209,7 @@ export default function PatientDashboard({ lastCheckIn, insights, averages, logs
                     )}
 
                     {/* Core Health Metrics - Premium Cards */}
-                    <PremiumCard className="lg:col-span-4" delay={0.25}>
+                    <PremiumCard className="col-span-1 lg:col-span-4" delay={0.25}>
                         <MetricDisplay
                             label="Tremor Intensity"
                             value={tremorValue}
@@ -195,7 +219,7 @@ export default function PatientDashboard({ lastCheckIn, insights, averages, logs
                         />
                     </PremiumCard>
 
-                    <PremiumCard className="lg:col-span-4" delay={0.3}>
+                    <PremiumCard className="col-span-1 lg:col-span-4" delay={0.3}>
                         <MetricDisplay
                             label="Muscle Rigidity"
                             value={stiffnessValue}
@@ -205,7 +229,7 @@ export default function PatientDashboard({ lastCheckIn, insights, averages, logs
                         />
                     </PremiumCard>
 
-                    <PremiumCard className="lg:col-span-4" delay={0.35}>
+                    <PremiumCard className="col-span-1 lg:col-span-4" delay={0.35}>
                         <MetricDisplay
                             label="Sleep Quality"
                             value={sleepValue}
@@ -217,7 +241,7 @@ export default function PatientDashboard({ lastCheckIn, insights, averages, logs
                     </PremiumCard>
 
                     {/* Bottom Row - Full Width Metrics */}
-                    <PremiumCard className="lg:col-span-6" delay={0.4}>
+                    <PremiumCard className="col-span-1 lg:col-span-6" delay={0.4}>
                         <div className="flex items-center justify-between mb-4">
                             <div className="flex items-center gap-3">
                                 <div className="p-2.5 bg-gradient-to-br from-teal-500 to-teal-600 rounded-xl shadow-lg shadow-teal-600/25">
@@ -240,7 +264,7 @@ export default function PatientDashboard({ lastCheckIn, insights, averages, logs
                         <ProgressBar value={medicationAdherence} />
                     </PremiumCard>
 
-                    <PremiumCard className="lg:col-span-6" delay={0.45}>
+                    <PremiumCard className="col-span-1 lg:col-span-6" delay={0.45}>
                         <div className="flex items-center justify-between mb-4">
                             <div className="flex items-center gap-3">
                                 <div className="p-2.5 bg-gradient-to-br from-teal-500 to-teal-600 rounded-xl shadow-lg shadow-teal-600/25">

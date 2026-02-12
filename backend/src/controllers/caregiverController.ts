@@ -2,6 +2,8 @@
 import { Request, Response } from 'express';
 import { supabaseAdmin } from '../lib/supabaseClient';
 import moment from 'moment';
+import crypto from 'crypto';
+import { sendEmail, caregiverInvitationTemplate } from '../utils/emailUtils';
 
 
 /**
@@ -35,6 +37,7 @@ export const getDashboard = async (req: Request, res: Response) => {
             gender,
             contact_number,
             status,
+            created_at,
             recent_logs:daily_logs (
                 id,
                 date,
@@ -289,8 +292,6 @@ const calculateAdherenceStats = (logs: any[]) => {
 
     // Calculate current streak
     let streak = 0;
-    // Note: Streak calculation might need more robust "consecutive days" logic but using simplified version from original code
-    // The original code was sort DESCENDING (b-a)
     const sortedLogsDesc = [...logs].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     for (const log of sortedLogsDesc) {
@@ -330,12 +331,6 @@ const calculateAdherenceStats = (logs: any[]) => {
         average_mood: getMoodFromScore(averageMoodScore)
     };
 };
-
-// Report Generation Logic included in separate file or here? 
-// Original had it in same file. Let's separate Report logic to keep this clean? 
-// Actually I'll keep it here or in a reportController. 
-// User asked to distribute properly. I'll put report logic in `reportController.ts`? 
-// Or just keep `generateReport` here for now since it is caregiver specific.
 
 
 /**
@@ -565,4 +560,457 @@ const generateInsights = (logs: any[], stats: any) => {
     }
 
     return insights;
+};
+
+
+// ================== CAREGIVER INVITATION METHODS ==================
+
+/**
+ * @swagger
+ * /api/caregiver/invite:
+ *   post:
+ *     summary: Send caregiver invitation (Patient only)
+ *     tags: [Caregiver]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - inviteeEmail
+ *             properties:
+ *               inviteeEmail:
+ *                 type: string
+ *               personalMessage:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Invitation sent successfully
+ *       400:
+ *         description: Invalid request
+ *       500:
+ *         description: Internal server error
+ */
+export const sendInvitation = async (req: Request, res: Response) => {
+    try {
+        const patientId = req.user.userId;
+        const { inviteeEmail, personalMessage } = req.body;
+
+        if (!inviteeEmail || !inviteeEmail.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
+            return res.status(400).json({ error: 'Valid email is required' });
+        }
+
+        // Check if invitation already exists and is pending
+        const { data: existingInvitation } = await supabaseAdmin
+            .from('caregiver_invitations')
+            .select('*')
+            .eq('patient_id', patientId)
+            .eq('invitee_email', inviteeEmail.toLowerCase())
+            .eq('status', 'pending')
+            .single();
+
+        if (existingInvitation) {
+            return res.status(400).json({ error: 'A pending invitation already exists for this email' });
+        }
+
+        // Check if the email is already a caregiver for this patient
+        const { data: existingAssignment } = await supabaseAdmin
+            .from('caregiver_assignments')
+            .select('id, caregiver:users!caregiver_assignments_caregiver_id_fkey(email)')
+            .eq('patient_id', patientId)
+            .eq('status', 'active');
+
+        if (existingAssignment?.some((a: any) => a.caregiver?.email === inviteeEmail.toLowerCase())) {
+            return res.status(400).json({ error: 'This person is already your caregiver' });
+        }
+
+        // Generate secure token
+        const invitationToken = crypto.randomBytes(32).toString('hex');
+        const expiresAt = moment().add(7, 'days').toISOString();
+
+        // Create invitation
+        const { data: invitation, error } = await supabaseAdmin
+            .from('caregiver_invitations')
+            .insert([
+                {
+                    patient_id: patientId,
+                    invitee_email: inviteeEmail.toLowerCase(),
+                    invitation_token: invitationToken,
+                    personal_message: personalMessage || null,
+                    expires_at: expiresAt,
+                    status: 'pending'
+                }
+            ])
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        // Get patient name for email
+        const { data: patient } = await supabaseAdmin
+            .from('users')
+            .select('full_name')
+            .eq('id', patientId)
+            .single();
+
+        // Send invitation email
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+        const inviteLink = `${frontendUrl}/signup/caregiver?token=${invitationToken}`;
+
+        const emailHtml = caregiverInvitationTemplate(
+            patient?.full_name || 'A patient',
+            inviteLink,
+            personalMessage || null
+        );
+
+        await sendEmail(
+            inviteeEmail,
+            `You've been invited to be a caregiver on MedicalAI`,
+            emailHtml
+        );
+
+        res.status(201).json({
+            message: 'Invitation sent successfully',
+            invitation: {
+                id: invitation.id,
+                invitee_email: invitation.invitee_email,
+                expires_at: invitation.expires_at,
+                status: invitation.status
+            }
+        });
+    } catch (error) {
+        console.error('Send invitation error:', error);
+        res.status(500).json({ error: 'Failed to send invitation' });
+    }
+};
+
+/**
+ * @swagger
+ * /api/caregiver/invitations:
+ *   get:
+ *     summary: Get patient's caregiver invitations (Patient only)
+ *     tags: [Caregiver]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Invitations retrieved successfully
+ *       500:
+ *         description: Internal server error
+ */
+export const getPatientInvitations = async (req: Request, res: Response) => {
+    try {
+        const patientId = req.user.userId;
+
+        const { data: invitations, error } = await supabaseAdmin
+            .from('caregiver_invitations')
+            .select('*')
+            .eq('patient_id', patientId)
+            .order('created_at', { ascending: false });
+
+        if (error) throw error;
+
+        // Auto-expire old invitations
+        const now = new Date();
+        const toExpire = invitations.filter(inv =>
+            inv.status === 'pending' && new Date(inv.expires_at) < now
+        );
+
+        if (toExpire.length > 0) {
+            await supabaseAdmin
+                .from('caregiver_invitations')
+                .update({ status: 'expired' })
+                .in('id', toExpire.map(inv => inv.id));
+        }
+
+        res.json({ invitations });
+    } catch (error) {
+        console.error('Get invitations error:', error);
+        res.status(500).json({ error: 'Failed to retrieve invitations' });
+    }
+};
+
+/**
+ * @swagger
+ * /api/caregiver/invitations/{invitationId}:
+ *   delete:
+ *     summary: Cancel/delete invitation (Patient only)
+ *     tags: [Caregiver]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: invitationId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Invitation cancelled successfully
+ *       403:
+ *         description: Not authorized
+ *       404:
+ *         description: Invitation not found
+ *       500:
+ *         description: Internal server error
+ */
+export const cancelInvitation = async (req: Request, res: Response) => {
+    try {
+        const patientId = req.user.userId;
+        const { invitationId } = req.params;
+
+        // Verify ownership
+        const { data: invitation } = await supabaseAdmin
+            .from('caregiver_invitations')
+            .select('*')
+            .eq('id', invitationId)
+            .eq('patient_id', patientId)
+            .single();
+
+        if (!invitation) {
+            return res.status(404).json({ error: 'Invitation not found' });
+        }
+
+        if (invitation.status !== 'pending') {
+            return res.status(400).json({ error: 'Can only cancel pending invitations' });
+        }
+
+        // Update status to cancelled
+        const { error } = await supabaseAdmin
+            .from('caregiver_invitations')
+            .update({ status: 'cancelled' })
+            .eq('id', invitationId);
+
+        if (error) {
+            // Check for unique violation (already have a cancelled invite for this email)
+            if (error.code === '23505') {
+                // If we can't mark it cancelled due to constraint, just delete this pending record
+                // distinct from the historical 'cancelled' one.
+                await supabaseAdmin
+                    .from('caregiver_invitations')
+                    .delete()
+                    .eq('id', invitationId);
+
+                return res.json({ message: 'Invitation cancelled successfully' });
+            }
+            throw error;
+        }
+
+        res.json({ message: 'Invitation cancelled successfully' });
+    } catch (error) {
+        console.error('Cancel invitation error:', error);
+        res.status(500).json({ error: 'Failed to cancel invitation' });
+    }
+};
+
+/**
+ * @swagger
+ * /api/caregiver/verify-invitation/{token}:
+ *   get:
+ *     summary: Verify invitation token (Public)
+ *     tags: [Caregiver]
+ *     parameters:
+ *       - in: path
+ *         name: token
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Token verified successfully
+ *       400:
+ *         description: Invalid or expired token
+ *       500:
+ *         description: Internal server error
+ */
+export const verifyInvitationToken = async (req: Request, res: Response) => {
+    try {
+        const { token } = req.params;
+
+        const { data: invitation, error } = await supabaseAdmin
+            .from('caregiver_invitations')
+            .select(`
+                *,
+                patient:users!caregiver_invitations_patient_id_fkey(full_name, email)
+            `)
+            .eq('invitation_token', token)
+            .single();
+
+        if (error || !invitation) {
+            return res.status(400).json({ error: 'Invalid invitation token' });
+        }
+
+        if (invitation.status !== 'pending') {
+            return res.status(400).json({ error: `Invitation has been ${invitation.status}` });
+        }
+
+        if (new Date(invitation.expires_at) < new Date()) {
+            // Auto-expire
+            await supabaseAdmin
+                .from('caregiver_invitations')
+                .update({ status: 'expired' })
+                .eq('id', invitation.id);
+
+            return res.status(400).json({ error: 'Invitation has expired' });
+        }
+
+        res.json({
+            valid: true,
+            invitation: {
+                id: invitation.id,
+                patient_name: invitation.patient?.full_name,
+                invitee_email: invitation.invitee_email,
+                personal_message: invitation.personal_message,
+                expires_at: invitation.expires_at
+            }
+        });
+    } catch (error) {
+        console.error('Verify invitation error:', error);
+        res.status(500).json({ error: 'Failed to verify invitation' });
+    }
+};
+
+/**
+ * @swagger
+ * /api/caregiver/accept-invitation:
+ *   post:
+ *     summary: Accept invitation and create caregiver account (Public)
+ *     tags: [Caregiver]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - token
+ *               - email
+ *               - password
+ *               - full_name
+ *             properties:
+ *               token:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *               full_name:
+ *                 type: string
+ *               phone:
+ *                 type: string
+ *     responses:
+ *       201:
+ *         description: Caregiver account created successfully
+ *       400:
+ *         description: Invalid request or token
+ *       500:
+ *         description: Internal server error
+ */
+export const acceptInvitation = async (req: Request, res: Response) => {
+    try {
+        const { token, email, password, full_name, phone } = req.body;
+
+        if (!token || !email || !password || !full_name) {
+            return res.status(400).json({ error: 'Missing required fields' });
+        }
+
+        // Verify invitation
+        const { data: invitation, error: invError } = await supabaseAdmin
+            .from('caregiver_invitations')
+            .select('*')
+            .eq('invitation_token', token)
+            .single();
+
+        if (invError || !invitation) {
+            return res.status(400).json({ error: 'Invalid invitation token' });
+        }
+
+        if (invitation.status !== 'pending') {
+            return res.status(400).json({ error: `Invitation has been ${invitation.status}` });
+        }
+
+        if (new Date(invitation.expires_at) < new Date()) {
+            return res.status(400).json({ error: 'Invitation has expired' });
+        }
+
+        if (email.toLowerCase() !== invitation.invitee_email.toLowerCase()) {
+            return res.status(400).json({ error: 'Email does not match invitation' });
+        }
+
+        // Check if user already exists
+        const { data: existingUser } = await supabaseAdmin
+            .from('users')
+            .select('id, role')
+            .eq('email', email.toLowerCase())
+            .single();
+
+        let caregiverId: string;
+
+        if (existingUser) {
+            // User exists
+            if (existingUser.role !== 'caregiver') {
+                return res.status(400).json({ error: 'User exists with a different role' });
+            }
+            caregiverId = existingUser.id;
+        } else {
+            // Create new caregiver account
+            const bcrypt = require('bcryptjs');
+            const hashedPassword = await bcrypt.hash(password, 10);
+
+            const { data: newUser, error: userError } = await supabaseAdmin
+                .from('users')
+                .insert([
+                    {
+                        email: email.toLowerCase(),
+                        password_hash: hashedPassword,
+                        full_name,
+                        role: 'caregiver',
+                        phone,
+                        is_active: true,
+                        email_verified: true
+                    }
+                ])
+                .select()
+                .single();
+
+            if (userError) throw userError;
+            caregiverId = newUser.id;
+        }
+
+        // Create caregiver assignment
+        const { error: assignError } = await supabaseAdmin
+            .from('caregiver_assignments')
+            .insert([
+                {
+                    caregiver_id: caregiverId,
+                    patient_id: invitation.patient_id,
+                    assigned_date: new Date().toISOString(),
+                    assignment_notes: invitation.personal_message || 'Patient-initiated assignment',
+                    status: 'active',
+                    invitation_id: invitation.id
+                }
+            ]);
+
+        if (assignError) throw assignError;
+
+        // Mark invitation as accepted
+        await supabaseAdmin
+            .from('caregiver_invitations')
+            .update({
+                status: 'accepted',
+                accepted_at: new Date().toISOString()
+            })
+            .eq('id', invitation.id);
+
+        res.status(201).json({
+            message: 'Caregiver account created and linked successfully',
+            caregiver_id: caregiverId
+        });
+    } catch (error) {
+        console.error('Accept invitation error:', error);
+        res.status(500).json({ error: 'Failed to accept invitation' });
+    }
 };
