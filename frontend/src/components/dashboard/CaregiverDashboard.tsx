@@ -2,28 +2,20 @@
 
 import React, { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
-import { Card } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
 import Link from 'next/link';
 import {
     Users,
     Activity,
     Bell,
     Search,
-    Filter,
     ChevronRight,
-    TrendingUp,
-    TrendingDown,
-    CheckCircle2,
     AlertCircle,
     Clock,
-    Share2,
-    BriefcaseMedical,
     ExternalLink,
-    FileText
+    Circle,
+    Eye
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { motion } from 'framer-motion';
 
 export default function CaregiverDashboard() {
     const [data, setData] = useState<any>(null);
@@ -46,8 +38,8 @@ export default function CaregiverDashboard() {
 
     if (loading) return (
         <div className="flex flex-col items-center justify-center h-[60vh] space-y-4">
-            <div className="w-12 h-12 border-4 border-teal-500 border-t-transparent rounded-full animate-spin" />
-            <span className="text-slate-400 font-black uppercase tracking-widest text-[10px]">Synchronizing Clinical Grid</span>
+            <div className="w-10 h-10 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+            <span className="text-sm text-gray-400">Loading dashboard...</span>
         </div>
     );
 
@@ -60,104 +52,108 @@ export default function CaregiverDashboard() {
     );
 
     return (
-        <div className="space-y-12 pb-24">
-            {/* Summary Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="space-y-6">
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <StatCard
                     label="Assigned Patients"
                     value={stats.total_patients}
-                    icon={<Users size={20} />}
+                    icon={<Users size={18} />}
                     trend="+2 this month"
-                    color="cyan"
+                    color="emerald"
                 />
                 <StatCard
-                    label="Telemetry Received"
+                    label="Health Records Today"
                     value={stats.todays_logs}
-                    icon={<Activity size={20} />}
+                    icon={<Activity size={18} />}
                     trend="85% completion"
                     color="teal"
                 />
                 <StatCard
-                    label="Clinical Alerts"
+                    label="Active Alerts"
                     value={stats.pending_notifications}
-                    icon={<Bell size={20} />}
-                    trend="Immediate action"
+                    icon={<Bell size={18} />}
+                    trend={stats.pending_notifications > 0 ? "Needs attention" : "All clear"}
                     color="rose"
                 />
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-                {/* Patient Management Matrix */}
-                <div className="lg:col-span-2 space-y-8">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                        <div>
-                            <h2 className="text-3xl font-black text-slate-900 tracking-tighter">Patient <span className="text-slate-400 italic font-serif font-light">Matrix</span></h2>
-                            <p className="text-slate-500 font-medium text-sm">Real-time physiological synchronization from assigned nodes.</p>
-                        </div>
-                        <div className="flex items-center space-x-4">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Patient List */}
+                <div className="lg:col-span-2 space-y-4">
+                    <div className="bg-[#181818] border border-gray-800 rounded-lg">
+                        <div className="p-4 border-b border-gray-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                            <div>
+                                <h2 className="text-base font-semibold text-white">Patient Management</h2>
+                                <p className="text-sm text-gray-500">Monitor your assigned patients</p>
+                            </div>
                             <div className="relative">
-                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
                                 <input
                                     type="text"
-                                    placeholder="Search nodes..."
+                                    placeholder="Search patients..."
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="pl-12 pr-6 py-3 bg-white/50 border border-white rounded-2xl text-sm font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-teal-500/20 w-64 shadow-premium backdrop-blur-xl"
+                                    className="pl-10 pr-4 py-2 bg-gray-900/50 border border-gray-800 rounded-lg text-sm text-white focus:outline-none focus:border-emerald-500 transition-all w-full md:w-64"
                                 />
                             </div>
-                            <button className="p-3 bg-white/50 border border-white rounded-2xl shadow-premium backdrop-blur-xl text-slate-400 hover:text-teal-600 transition-colors">
-                                <Filter size={20} />
-                            </button>
                         </div>
-                    </div>
 
-                    <div className="grid grid-cols-1 gap-6">
-                        {filteredAssignments.length === 0 ? (
-                            <div className="py-24 text-center bg-white/30 border-2 border-dashed border-slate-200 rounded-[32px]">
-                                <Users size={48} className="mx-auto text-slate-300 mb-4" />
-                                <p className="text-slate-500 font-black uppercase tracking-widest text-xs">No Clinical Links Found</p>
-                            </div>
-                        ) : (
-                            filteredAssignments.map((assign: any) => (
-                                <PatientCard key={assign.id} patient={assign.patient} notes={assign.assignment_notes} />
-                            ))
-                        )}
+                        <div className="divide-y divide-gray-800">
+                            {filteredAssignments.length === 0 ? (
+                                <div className="py-16 text-center">
+                                    <Users size={48} className="mx-auto text-gray-700 mb-3" />
+                                    <p className="text-gray-500 text-sm">No patients found</p>
+                                </div>
+                            ) : (
+                                filteredAssignments.map((assign: any) => (
+                                    <PatientCard key={assign.id} patient={assign.patient} notes={assign.assignment_notes} />
+                                ))
+                            )}
+                        </div>
                     </div>
                 </div>
 
-                {/* Clinical Intelligence / Alerts */}
-                <div className="space-y-8">
-                    <h2 className="text-2xl font-black text-slate-900 tracking-tight">Active <span className="text-slate-400 italic font-serif font-light">Alerts</span></h2>
-                    <Card className="p-0 overflow-hidden border-none shadow-glow bg-slate-900 text-white" hover={false}>
-                        <div className="p-8 bg-gradient-to-br from-slate-800 to-slate-900 border-b border-white/5">
-                            <div className="flex items-center justify-between mb-6">
-                                <div className="flex items-center space-x-3 bg-red-500/20 px-3 py-1 rounded-full border border-red-500/20">
-                                    <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" />
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-red-400">High Priority</span>
+                {/* Notifications Panel */}
+                <div className="space-y-4">
+                    <div className="bg-[#181818] border border-gray-800 rounded-lg overflow-hidden">
+                        <div className="p-4 bg-gradient-to-br from-gray-900 to-gray-800 border-b border-gray-800">
+                            <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center space-x-2 px-2.5 py-1 bg-red-500/10 border border-red-500/20 rounded-md">
+                                    <Circle size={6} className="text-red-500 fill-red-500 animate-pulse" />
+                                    <span className="text-xs font-medium text-red-400">High Priority</span>
                                 </div>
-                                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Real-time Feed</span>
+                                <span className="text-xs text-gray-500">Live Feed</span>
                             </div>
-                            <p className="text-slate-400 text-xs font-medium leading-relaxed">System has flagged {notifications.length} clinical events requiring immediate verification.</p>
+                            <h3 className="text-base font-semibold text-white mb-1">Active Alerts</h3>
+                            <p className="text-xs text-gray-400">
+                                {notifications.length} clinical event{notifications.length !== 1 ? 's' : ''} requiring attention
+                            </p>
                         </div>
-                        <div className="divide-y divide-white/5">
+
+                        <div className="divide-y divide-gray-800 max-h-[500px] overflow-y-auto">
                             {notifications.length === 0 ? (
-                                <div className="p-12 text-center text-slate-600 text-[10px] font-black uppercase tracking-[0.2em]">All Systems Nominal</div>
+                                <div className="p-12 text-center text-gray-600 text-sm">
+                                    All systems nominal
+                                </div>
                             ) : (
                                 notifications.map((n: any) => (
-                                    <div key={n.id} className="p-6 hover:bg-white/[0.02] transition-colors group cursor-pointer">
-                                        <div className="flex items-start space-x-4">
+                                    <div key={n.id} className="p-4 hover:bg-gray-800/30 transition-colors group cursor-pointer">
+                                        <div className="flex items-start space-x-3">
                                             <div className={cn(
-                                                "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
-                                                n.type === 'alert' ? "bg-red-500/10 text-red-500" : "bg-teal-500/10 text-teal-500"
+                                                "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
+                                                n.type === 'alert' ? "bg-red-500/10 text-red-400 border border-red-500/20" : "bg-teal-500/10 text-teal-400 border border-teal-500/20"
                                             )}>
-                                                {n.type === 'alert' ? <AlertCircle size={20} /> : <Activity size={20} />}
+                                                {n.type === 'alert' ? <AlertCircle size={16} /> : <Activity size={16} />}
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                                <div className="text-sm font-bold text-white mb-1">{n.title}</div>
-                                                <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed mb-3">{n.message}</p>
+                                                <div className="text-sm font-medium text-white mb-1">{n.title}</div>
+                                                <p className="text-xs text-gray-500 line-clamp-2 mb-2">{n.message}</p>
                                                 <div className="flex items-center justify-between">
-                                                    <span className="text-[10px] font-mono text-slate-600">{new Date(n.created_at).toLocaleTimeString()}</span>
-                                                    <button className="text-[10px] font-black uppercase tracking-widest text-teal-500 opacity-0 group-hover:opacity-100 transition-opacity">Acknowledge</button>
+                                                    <span className="text-xs text-gray-600">{new Date(n.created_at).toLocaleTimeString()}</span>
+                                                    <button className="text-xs font-medium text-emerald-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        Acknowledge
+                                                    </button>
                                                 </div>
                                             </div>
                                         </div>
@@ -165,42 +161,43 @@ export default function CaregiverDashboard() {
                                 ))
                             )}
                         </div>
-                        <div className="p-6 bg-white/[0.02] text-center">
-                            <button className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-500 hover:text-white transition-colors flex items-center justify-center mx-auto">
-                                View Archive <ChevronRight size={14} className="ml-2" />
-                            </button>
-                        </div>
-                    </Card>
 
-                    {/* Quick Access Tools */}
-
+                        {notifications.length > 0 && (
+                            <div className="p-3 bg-gray-900/50 text-center border-t border-gray-800">
+                                <button className="text-xs font-medium text-gray-500 hover:text-white transition-colors flex items-center justify-center mx-auto">
+                                    View All <ChevronRight size={14} className="ml-1" />
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
         </div>
     );
 }
 
-function StatCard({ label, value, icon, trend, color }: { label: string, value: any, icon: React.ReactNode, trend: string, color: 'teal' | 'cyan' | 'emerald' | 'rose' }) {
+function StatCard({ label, value, icon, trend, color }: { label: string, value: any, icon: React.ReactNode, trend: string, color: 'teal' | 'emerald' | 'rose' }) {
     const colors = {
-        teal: 'text-teal-600 bg-teal-50',
-        cyan: 'text-cyan-600 bg-cyan-50',
-        emerald: 'text-emerald-600 bg-emerald-50',
-        rose: 'text-rose-600 bg-rose-50'
+        teal: { bg: 'bg-teal-500/10', text: 'text-teal-400', border: 'border-teal-500/20' },
+        emerald: { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/20' },
+        rose: { bg: 'bg-rose-500/10', text: 'text-rose-400', border: 'border-rose-500/20' }
     };
 
+    const colorClass = colors[color];
+
     return (
-        <Card className="group">
-            <div className="flex justify-between items-start mb-6">
-                <div className={cn("p-4 rounded-2xl transition-all group-hover:scale-110", colors[color])}>
+        <div className="bg-[#181818] border border-gray-800 rounded-lg p-4">
+            <div className="flex justify-between items-start mb-3">
+                <div className={cn("p-2 rounded-lg", colorClass.bg, colorClass.text)}>
                     {icon}
                 </div>
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{trend}</span>
+                <span className="text-xs text-gray-500">{trend}</span>
             </div>
             <div className="space-y-1">
-                <div className="text-4xl font-black text-slate-900 tracking-tighter">{value}</div>
-                <div className="text-xs font-bold text-slate-500 uppercase tracking-widest">{label}</div>
+                <div className="text-2xl font-bold text-white">{value}</div>
+                <div className="text-sm text-gray-500">{label}</div>
             </div>
-        </Card>
+        </div>
     );
 }
 
@@ -209,97 +206,75 @@ function PatientCard({ patient, notes }: { patient: any, notes: string }) {
     const isStable = lastLog?.mood !== 'bad' && lastLog?.medication_taken !== false;
 
     return (
-        <Card className="p-0 overflow-hidden group hover:shadow-glow-teal transition-all flex flex-col md:flex-row border-slate-50/50" hover={false}>
-            <div className="p-8 flex-1">
-                <div className="flex items-center justify-between mb-8">
-                    <div className="flex items-center space-x-6">
-                        <div className="w-16 h-16 rounded-[24px] bg-slate-900 text-white flex items-center justify-center font-black text-2xl relative shadow-xl">
+        <div className="p-4 hover:bg-gray-800/30 transition-colors">
+            <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center space-x-3">
+                    <div className="relative">
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center font-semibold text-lg">
                             {patient.full_name?.charAt(0)}
-                            <div className={cn(
-                                "absolute -top-1 -right-1 w-4 h-4 rounded-full border-4 border-white",
-                                isStable ? "bg-emerald-500" : "bg-orange-500"
-                            )} />
                         </div>
-                        <div>
-                            <h4 className="text-2xl font-black text-slate-900 tracking-tight mb-1">{patient.full_name}</h4>
-                            <div className="flex items-center space-x-3">
-                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">ID: {patient.id.slice(0, 8)}</span>
-                                <span className="w-1 h-1 bg-slate-200 rounded-full" />
-                                <span className="text-[10px] font-bold text-teal-600 uppercase tracking-widest">{patient.status}</span>
-                            </div>
-                        </div>
+                        <div className={cn(
+                            "absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-[#181818]",
+                            isStable ? "bg-emerald-500" : "bg-orange-500"
+                        )} />
                     </div>
-                    <div className="hidden md:flex flex-col items-end">
-                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Last Synchronization</div>
-                        <div className="flex items-center text-slate-900 font-bold text-sm">
-                            <Clock size={14} className="mr-2 text-teal-500" />
-                            {lastLog ? new Date(lastLog.created_at).toLocaleDateString() : 'No data received'}
+                    <div>
+                        <h4 className="text-base font-semibold text-white">{patient.full_name}</h4>
+                        <div className="flex items-center space-x-2 mt-0.5">
+                            <span className="text-xs text-gray-500">ID: {patient.id.slice(0, 8)}</span>
+                            <span className="w-1 h-1 bg-gray-700 rounded-full" />
+                            <span className="text-xs text-emerald-400">{patient.status}</span>
                         </div>
                     </div>
                 </div>
-
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-6 py-8 border-y border-slate-50">
-                    <MiniMetric label="Clinical Mood" value={lastLog?.mood || 'Pending'} color={lastLog?.mood === 'bad' ? 'rose' : 'teal'} />
-                    <MiniMetric label="Med Compliance" value={lastLog?.medication_taken === true ? 'Verified' : lastLog?.medication_taken === false ? 'Critical' : 'N/A'} color={lastLog?.medication_taken === false ? 'rose' : 'emerald'} />
-                    <MiniMetric label="Telemetry Status" value={lastLog ? 'Receiving' : 'Offline'} color={lastLog ? 'teal' : 'rose'} />
-                    <MiniMetric label="Assigned Since" value={new Date(patient.created_at).getFullYear()} color="cyan" />
-                </div>
-
-                <div className="mt-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
-                    <div className="flex items-center space-x-2 text-slate-400">
-                        <Share2 size={14} />
-                        <span className="text-xs font-medium italic">"{notes || 'Primary health link active.'}"</span>
+                <div className="text-right">
+                    <div className="text-xs text-gray-500 mb-1">Last Check-in</div>
+                    <div className="flex items-center text-gray-300 text-sm">
+                        <Clock size={12} className="mr-1.5 text-teal-500" />
+                        {lastLog ? new Date(lastLog.created_at).toLocaleDateString() : 'No data'}
                     </div>
-                    <div className="flex items-center space-x-3">
-                        <Link href={`/dashboard/patients/${patient.id}`}>
-                            <Button variant="dark" className="bg-slate-900 hover:bg-slate-800 text-white text-[10px] font-black uppercase tracking-widest px-6 rounded-xl">
-                                Full Analysis <ChevronRight size={14} className="ml-2" />
-                            </Button>
-                        </Link>
-                        <button className="p-3 bg-slate-50 hover:bg-teal-50 text-slate-400 hover:text-teal-600 rounded-xl transition-all">
-                            <ExternalLink size={18} />
+                </div>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 py-3 border-y border-gray-800">
+                <MiniMetric label="Mood" value={lastLog?.mood || 'Pending'} color={lastLog?.mood === 'bad' ? 'rose' : 'teal'} />
+                <MiniMetric label="Medication" value={lastLog?.medication_taken === true ? 'Taken' : lastLog?.medication_taken === false ? 'Missed' : 'N/A'} color={lastLog?.medication_taken === false ? 'rose' : 'emerald'} />
+                <MiniMetric label="Status" value={lastLog ? 'Active' : 'Offline'} color={lastLog ? 'teal' : 'rose'} />
+                <MiniMetric label="Since" value={new Date(patient.created_at).getFullYear()} color="cyan" />
+            </div>
+
+            <div className="mt-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                <div className="text-xs text-gray-500 italic">
+                    "{notes || 'Primary care assignment active.'}"
+                </div>
+                <div className="flex items-center space-x-2">
+                    <Link href={`/dashboard/patients/${patient.id}`}>
+                        <button className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-medium rounded-lg transition-colors inline-flex items-center space-x-1.5">
+                            <Eye size={14} />
+                            <span>View Details</span>
                         </button>
-                    </div>
+                    </Link>
+                    <button className="p-2 bg-gray-800 hover:bg-gray-700 text-gray-400 hover:text-teal-400 rounded-lg transition-all">
+                        <ExternalLink size={16} />
+                    </button>
                 </div>
             </div>
-            {/* Side Action Bar */}
-            <div className="bg-slate-50 border-l border-slate-100 p-4 flex md:flex-col justify-around items-center space-y-4">
-                <Link href={`/dashboard/patients/${patient.id}`}>
-                    <ActionIcon icon={<Activity size={18} />} label="Live" />
-                </Link>
-                <Link href={`/dashboard/patients/${patient.id}`}>
-                    <ActionIcon icon={<TrendingUp size={18} />} label="Trends" />
-                </Link>
-                <Link href={`/dashboard/patients/${patient.id}`}>
-                    <ActionIcon icon={<BriefcaseMedical size={18} />} label="Meds" />
-                </Link>
-            </div>
-        </Card>
+        </div>
     );
 }
 
 function MiniMetric({ label, value, color }: { label: string, value: any, color: 'teal' | 'rose' | 'cyan' | 'emerald' }) {
     const colors = {
-        teal: 'text-teal-600',
-        rose: 'text-rose-600',
-        cyan: 'text-cyan-600',
-        emerald: 'text-emerald-600'
+        teal: 'text-teal-400',
+        rose: 'text-rose-400',
+        cyan: 'text-cyan-400',
+        emerald: 'text-emerald-400'
     };
+
     return (
         <div className="space-y-1">
-            <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{label}</div>
-            <div className={cn("text-sm font-black uppercase tracking-tight", colors[color])}>{value}</div>
+            <div className="text-xs text-gray-500">{label}</div>
+            <div className={cn("text-sm font-semibold", colors[color])}>{value}</div>
         </div>
-    );
-}
-
-function ActionIcon({ icon, label }: { icon: React.ReactNode, label: string }) {
-    return (
-        <button className="flex flex-col items-center space-y-1 group">
-            <div className="p-3 bg-white border border-slate-100 text-slate-400 rounded-xl group-hover:text-teal-500 group-hover:border-teal-100 transition-all shadow-sm">
-                {icon}
-            </div>
-            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest group-hover:text-teal-600 transition-colors">{label}</span>
-        </button>
     );
 }
