@@ -36,15 +36,25 @@ export default function ManageCaregiversPage() {
     const fetchData = async () => {
         try {
             setLoading(true);
+            const userStr = localStorage.getItem('user');
+            if (!userStr) return;
+            const user = JSON.parse(userStr);
+            const patientId = user.id;
+
             const [invitationsRes, caregiversRes] = await Promise.all([
                 api.caregiver.getInvitations(),
-                // TODO: Add endpoint to get patient's caregivers
-                Promise.resolve({ caregivers: [] })
+                api.patient.getCaregivers(patientId)
             ]);
-            setInvitations(invitationsRes.invitations || []);
-            setCaregivers(caregiversRes.caregivers || []);
+
+            // Filter out 'accepted' from invitations list so they don't appear twice
+            // Since they are now in the caregiversRes
+            const pendingInvites = (invitationsRes.invitations || []).filter((inv: any) => inv.status === 'pending');
+
+            setInvitations(pendingInvites);
+            setCaregivers(caregiversRes || []);
         } catch (err: any) {
             console.error('Failed to fetch data:', err);
+            setError('Failed to load caregiver data. Please try again.');
         } finally {
             setLoading(false);
         }
@@ -245,6 +255,55 @@ export default function ManageCaregiversPage() {
                         </form>
                     </motion.div>
                 )}
+
+                {/* Active Caregivers List */}
+                <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden mb-6">
+                    <div className="p-6 border-b border-gray-200">
+                        <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                            <CheckCircle size={20} className="text-teal-600" />
+                            Active Caregivers ({caregivers.length})
+                        </h2>
+                    </div>
+                    <div className="divide-y divide-gray-200">
+                        {caregivers.length === 0 ? (
+                            <div className="p-8 text-center text-gray-500">
+                                <Users size={40} className="mx-auto mb-3 text-gray-200" />
+                                <p className="text-sm italic">No active caregivers assigned yet.</p>
+                            </div>
+                        ) : (
+                            caregivers.map((assignment) => (
+                                <div key={assignment.id} className="p-4 hover:bg-gray-50 transition-colors">
+                                    <div className="flex items-center justify-between gap-4">
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-full bg-teal-100 flex items-center justify-center text-teal-700 font-bold uppercase">
+                                                    {assignment.caregiver.full_name.charAt(0)}
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-bold text-gray-900">
+                                                        {assignment.caregiver.full_name}
+                                                    </p>
+                                                    <p className="text-xs text-gray-500">
+                                                        {assignment.caregiver.email}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="text-right flex flex-col items-end gap-1">
+                                            <span className="text-[10px] text-gray-400 font-mono uppercase tracking-tighter">
+                                                Assigned: {new Date(assignment.created_at).toLocaleDateString()}
+                                            </span>
+                                            {/* We can add a "Remove" button here if needed, but for now just show they are active */}
+                                            <span className="px-2 py-0.5 bg-green-50 text-green-700 text-[10px] font-bold rounded-full border border-green-200">
+                                                ACTIVE
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
 
                 {/* Invitations List */}
                 <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">

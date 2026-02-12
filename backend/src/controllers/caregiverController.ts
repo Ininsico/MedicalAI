@@ -712,6 +712,9 @@ export const getPatientInvitations = async (req: Request, res: Response) => {
             .from('caregiver_invitations')
             .select('*')
             .eq('patient_id', patientId)
+            .neq('status', 'cancelled')
+            .neq('status', 'expired')
+            .neq('status', 'rejected')
             .order('created_at', { ascending: false });
 
         if (error) throw error;

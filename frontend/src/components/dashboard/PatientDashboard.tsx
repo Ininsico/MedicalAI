@@ -106,18 +106,16 @@ export default function PatientDashboard({ lastCheckIn, insights, averages, logs
                                                 }
                                             </p>
 
-                                            {!isToday && (
-                                                <Link href="/dashboard/check-in" className="block sm:inline-block w-full sm:w-auto">
-                                                    <motion.button
-                                                        whileHover={{ scale: 1.01 }}
-                                                        whileTap={{ scale: 0.99 }}
-                                                        className="mt-4 w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-700 hover:to-teal-600 text-white text-sm font-semibold rounded-xl shadow-lg shadow-teal-600/25 hover:shadow-xl hover:shadow-teal-600/30 transition-all duration-300 flex items-center justify-center gap-2 group"
-                                                    >
-                                                        <span>Start Assessment</span>
-                                                        <ArrowRight size={16} className="group-hover:translate-x-0.5 transition-transform" />
-                                                    </motion.button>
-                                                </Link>
-                                            )}
+                                            <Link href="/dashboard/check-in" className="block sm:inline-block w-full sm:w-auto">
+                                                <motion.button
+                                                    whileHover={{ scale: 1.01 }}
+                                                    whileTap={{ scale: 0.99 }}
+                                                    className="mt-4 w-full sm:w-auto px-5 py-2.5 bg-gradient-to-r from-teal-600 to-teal-500 hover:from-teal-700 hover:to-teal-600 text-white text-sm font-semibold rounded-xl shadow-lg shadow-teal-600/25 hover:shadow-xl hover:shadow-teal-600/30 transition-all duration-300 flex items-center justify-center gap-2 group"
+                                                >
+                                                    <span>{isToday ? "Edit Assessment" : "Start Assessment"}</span>
+                                                    <ArrowRight size={16} className="group-hover:translate-x-0.5 transition-transform" />
+                                                </motion.button>
+                                            </Link>
                                         </div>
                                     </div>
                                 </div>

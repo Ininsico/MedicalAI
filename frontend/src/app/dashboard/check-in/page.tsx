@@ -67,24 +67,22 @@ export default function CheckInPage() {
                 const logs = await api.patient.getLogs(user.id);
 
                 if (logs && logs.length > 0) {
-                    const last = logs[0];
-                    const isToday = (
-                        new Date(last.date).toDateString() === new Date().toDateString() ||
-                        new Date(last.created_at).toDateString() === new Date().toDateString()
-                    );
+                    // Normalize dates for comparison to handle timezone shifts
+                    const today = new Date().toISOString().split('T')[0];
+                    const existingLog = logs.find((l: any) => l.date === today);
 
-                    if (isToday) {
+                    if (existingLog) {
                         // Load existing data for editing
                         setIsEditing(true);
-                        setExistingLogId(last.id);
+                        setExistingLogId(existingLog.id);
                         setFormData({
-                            tremor: last.tremor_severity || 5,
-                            stiffness: last.stiffness_severity || 5,
+                            tremor: existingLog.tremor_severity || 5,
+                            stiffness: existingLog.stiffness_severity || 5,
                             balance: 5,
-                            sleep: last.sleep_hours || 7,
-                            mood: last.mood === 'excellent' ? 10 : last.mood === 'good' ? 8 : last.mood === 'neutral' ? 5 : 3,
-                            medication: last.medication_taken ? 'Yes' : 'Missed',
-                            sideEffects: last.symptoms || [],
+                            sleep: existingLog.sleep_hours || 7,
+                            mood: existingLog.mood === 'excellent' ? 10 : existingLog.mood === 'good' ? 8 : existingLog.mood === 'neutral' ? 5 : 3,
+                            medication: existingLog.medication_taken ? 'Yes' : 'Missed',
+                            sideEffects: existingLog.symptoms || [],
                         });
                     }
                 }
@@ -145,8 +143,16 @@ export default function CheckInPage() {
                 // Update existing log
                 await api.patient.updateLog(user.id, existingLogId, payload);
             } else {
-                // Create new log
-                await api.patient.createLog(user.id, payload);
+                // Double check if entry exists to avoid 400 error
+                const logs = await api.patient.getLogs(user.id);
+                const today = new Date().toISOString().split('T')[0];
+                const existing = logs.find((l: any) => l.date === today);
+
+                if (existing) {
+                    await api.patient.updateLog(user.id, existing.id, payload);
+                } else {
+                    await api.patient.createLog(user.id, payload);
+                }
             }
 
             setSuccess(true);
