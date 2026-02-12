@@ -28,6 +28,7 @@ export default function AdminPage() {
     const [loading, setLoading] = useState(true);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const [healthData, setHealthData] = useState<any>(null);
     const [stats, setStats] = useState({
@@ -120,14 +121,29 @@ export default function AdminPage() {
 
     return (
         <div className="min-h-screen bg-[#1c1c1c] text-gray-200 flex">
+            {/* Sidebar Overlay for Mobile */}
+            <AnimatePresence>
+                {isMobileMenuOpen && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[90] lg:hidden"
+                    />
+                )}
+            </AnimatePresence>
+
             {/* Sidebar */}
             <aside className={cn(
-                "bg-[#181818] border-r border-gray-800 flex flex-col transition-all duration-300",
-                sidebarCollapsed ? "w-16" : "w-64"
+                "fixed lg:relative bg-[#181818] border-r border-gray-800 flex flex-col transition-all duration-300 z-[100] h-full",
+                sidebarCollapsed ? "lg:w-16" : "lg:w-64",
+                isMobileMenuOpen ? "translate-x-0 w-64" : "-translate-x-full lg:translate-x-0",
+                !isMobileMenuOpen && sidebarCollapsed && "w-0 lg:w-16 overflow-hidden"
             )}>
                 {/* Logo */}
                 <div className="h-14 border-b border-gray-800 flex items-center px-4 justify-between">
-                    {!sidebarCollapsed && (
+                    {(!sidebarCollapsed || isMobileMenuOpen) && (
                         <div className="flex items-center space-x-2">
                             <div className="w-7 h-7 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-md flex items-center justify-center">
                                 <Shield size={16} className="text-white" />
@@ -137,9 +153,15 @@ export default function AdminPage() {
                     )}
                     <button
                         onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                        className="p-1.5 hover:bg-gray-800 rounded-md transition-colors"
+                        className="hidden lg:block p-1.5 hover:bg-gray-800 rounded-md transition-colors"
                     >
                         <Menu size={18} />
+                    </button>
+                    <button
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="lg:hidden p-1.5 hover:bg-gray-800 rounded-md transition-colors"
+                    >
+                        <X size={18} />
                     </button>
                 </div>
 
@@ -151,16 +173,16 @@ export default function AdminPage() {
                         return (
                             <button
                                 key={item.id}
-                                onClick={() => { setActiveTab(item.id as any); setSelectedPatient(null); }}
+                                onClick={() => { setActiveTab(item.id as any); setSelectedPatient(null); setIsMobileMenuOpen(false); }}
                                 className={cn(
-                                    "w-full flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-all",
+                                    "w-full flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium transition-all text-left",
                                     isActive
                                         ? "bg-gray-800 text-white"
                                         : "text-gray-400 hover:text-gray-200 hover:bg-gray-800/50"
                                 )}
                             >
                                 <Icon size={18} />
-                                {!sidebarCollapsed && <span>{item.label}</span>}
+                                {(!sidebarCollapsed || isMobileMenuOpen) && <span>{item.label}</span>}
                             </button>
                         );
                     })}
@@ -170,12 +192,12 @@ export default function AdminPage() {
                 <div className="border-t border-gray-800 p-3">
                     <div className={cn(
                         "flex items-center space-x-3 p-2 rounded-md hover:bg-gray-800 transition-colors",
-                        sidebarCollapsed && "justify-center"
+                        sidebarCollapsed && !isMobileMenuOpen && "justify-center"
                     )}>
                         <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center text-white text-sm font-semibold">
                             A
                         </div>
-                        {!sidebarCollapsed && (
+                        {(!sidebarCollapsed || isMobileMenuOpen) && (
                             <div className="flex-1 min-w-0">
                                 <p className="text-sm font-medium text-white truncate">Administrator</p>
                                 <p className="text-xs text-gray-500 truncate">admin@medicalai.com</p>
@@ -186,11 +208,11 @@ export default function AdminPage() {
                         onClick={logout}
                         className={cn(
                             "w-full mt-2 flex items-center space-x-3 px-3 py-2 rounded-md text-sm font-medium text-gray-400 hover:text-red-400 hover:bg-gray-800/50 transition-all",
-                            sidebarCollapsed && "justify-center"
+                            sidebarCollapsed && !isMobileMenuOpen && "justify-center"
                         )}
                     >
                         <LogOut size={18} />
-                        {!sidebarCollapsed && <span>Logout</span>}
+                        {(!sidebarCollapsed || isMobileMenuOpen) && <span>Logout</span>}
                     </button>
                 </div>
             </aside>
@@ -198,19 +220,26 @@ export default function AdminPage() {
             {/* Main Content */}
             <div className="flex-1 flex flex-col overflow-hidden">
                 {/* Top Bar */}
-                <header className="h-14 bg-[#181818] border-b border-gray-800 flex items-center justify-between px-6">
-                    <div>
-                        <h1 className="text-lg font-semibold text-white">
+                <header className="h-14 bg-[#181818] border-b border-gray-800 flex items-center justify-between px-4 lg:px-6">
+                    <div className="flex items-center">
+                        <button
+                            onClick={() => setIsMobileMenuOpen(true)}
+                            className="lg:hidden p-2 mr-2 hover:bg-gray-800 rounded-md transition-colors text-gray-400"
+                        >
+                            <Menu size={20} />
+                        </button>
+                        <h1 className="text-sm lg:text-lg font-semibold text-white truncate">
                             {selectedPatient ? selectedPatient.full_name :
-                                activeTab === 'patients' ? 'Patient Management' :
-                                    activeTab === 'caregivers' ? 'Caregiver Management' : 'Audit Logs'}
+                                activeTab === 'patients' ? 'Patients' :
+                                    activeTab === 'caregivers' ? 'Caregivers' : 'System Logs'}
                         </h1>
                     </div>
                     <div className="flex items-center space-x-3">
-                        <div className="flex items-center space-x-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-md">
+                        <div className="hidden sm:flex items-center space-x-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-md">
                             <Circle size={8} className="text-emerald-500 fill-emerald-500" />
                             <span className="text-xs font-medium text-emerald-400">System Healthy</span>
                         </div>
+                        <div className="sm:hidden w-2 h-2 rounded-full bg-emerald-500 animate-pulse" title="System Healthy" />
                     </div>
                 </header>
 
