@@ -2,8 +2,6 @@
 
 import React, { useState, Suspense } from 'react';
 import { api } from '@/lib/api';
-import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
 import {
     FileText,
     Download,
