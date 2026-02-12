@@ -59,6 +59,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     };
 
     const firstName = user?.full_name?.split(' ')[0] || 'User';
+    const isCaregiver = user?.role === 'caregiver';
 
     const handleLogout = () => {
         localStorage.removeItem('token');
@@ -98,7 +99,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 "bg-white border-r border-gray-300 flex flex-col transition-all duration-300 fixed h-full z-50 shadow-xl lg:shadow-sm",
                 "lg:translate-x-0", // Always visible on desktop (width controlled below)
                 mobileMenuOpen ? "translate-x-0 w-64" : "-translate-x-full lg:translate-x-0", // Mobile toggle
-                sidebarCollapsed && !mobileMenuOpen ? "lg:w-16" : "lg:w-64" // Desktop collapse state
+                sidebarCollapsed && !mobileMenuOpen ? "lg:w-16" : "lg:w-64", // Desktop collapse state
+                isCaregiver && "hidden"
             )}>
                 {/* Logo */}
                 <div className="h-14 border-b border-gray-300 flex items-center px-4 justify-between shrink-0 bg-white">
@@ -193,22 +195,33 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             {/* Main Content */}
             <div className={cn(
                 "flex-1 flex flex-col overflow-hidden transition-all duration-300 min-h-screen w-full",
-                sidebarCollapsed ? "lg:ml-16" : "lg:ml-64" // Desktop margins only
+                !isCaregiver && (sidebarCollapsed ? "lg:ml-16" : "lg:ml-64") // Desktop margins only
             )}>
                 {/* Top Bar */}
                 <header className="h-14 bg-white border-b border-gray-300 flex items-center justify-between px-4 lg:px-6 shadow-sm sticky top-0 z-30">
                     <div className="flex items-center gap-3">
-                        <button
-                            onClick={() => setMobileMenuOpen(true)}
-                            className="p-1.5 hover:bg-gray-100 rounded-md transition-colors text-gray-600 lg:hidden"
-                        >
-                            <Menu size={20} />
-                        </button>
+                        {!isCaregiver && (
+                            <button
+                                onClick={() => setMobileMenuOpen(true)}
+                                className="p-1.5 hover:bg-gray-100 rounded-md transition-colors text-gray-600 lg:hidden"
+                            >
+                                <Menu size={20} />
+                            </button>
+                        )}
                         <h1 className="text-lg font-semibold text-gray-900 truncate max-w-[200px] sm:max-w-none">
-                            {getTimeGreeting()}, {firstName}
+                            {isCaregiver ? 'Caregiver Portal' : `${getTimeGreeting()}, ${firstName}`}
                         </h1>
                     </div>
                     <div className="flex items-center space-x-3">
+                        {isCaregiver && (
+                            <button
+                                onClick={handleLogout}
+                                className="flex items-center space-x-2 px-3 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 rounded-md transition-colors text-xs font-medium border border-red-200"
+                            >
+                                <LogOut size={14} />
+                                <span>Logout</span>
+                            </button>
+                        )}
                         <div className={cn(
                             "hidden sm:flex items-center space-x-2 px-3 py-1.5 rounded-md border",
                             user?.role === 'patient'

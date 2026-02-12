@@ -9,13 +9,15 @@ import {
     Bell,
     Search,
     ChevronRight,
-    AlertCircle,
     Clock,
     ExternalLink,
-    Circle,
-    Eye
+    Filter,
+    Plus,
+    CheckCircle2,
+    AlertCircle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { motion } from 'framer-motion';
 
 export default function CaregiverDashboard() {
     const [data, setData] = useState<any>(null);
@@ -37,138 +39,201 @@ export default function CaregiverDashboard() {
     }, []);
 
     if (loading) return (
-        <div className="flex flex-col items-center justify-center h-[60vh] space-y-4">
-            <div className="w-10 h-10 border-3 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-            <span className="text-sm text-gray-500">Loading dashboard...</span>
+        <div className="flex flex-col items-center justify-center h-[80vh]">
+            <div className="relative">
+                <div className="w-16 h-16 border-4 border-slate-100 border-t-teal-600 rounded-full animate-spin"></div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                    <Activity size={20} className="text-teal-600" />
+                </div>
+            </div>
+            <p className="mt-4 text-slate-500 font-medium animate-pulse">Syncing Medical Records...</p>
         </div>
     );
 
-    const stats = data?.stats || { total_patients: 0, todays_logs: 0, medications_taken: 0, pending_notifications: 0 };
     const assignments = data?.assignments || [];
     const notifications = data?.notifications || [];
+    const stats = data?.stats || {};
 
     const filteredAssignments = assignments.filter((a: any) =>
         a.patient?.full_name?.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
+    // Dynamic Calculations
+    const activePatientsCount = assignments.length;
+
+    // Calculate Global Compliance
+    let totalLogsCount = 0;
+    let totalMedsTaken = 0;
+
+    assignments.forEach((assign: any) => {
+        const logs = assign.patient.recent_logs || [];
+        totalLogsCount += logs.length;
+        totalMedsTaken += logs.filter((l: any) => l.medication_taken).length;
+    });
+
+    const complianceRate = totalLogsCount > 0
+        ? Math.round((totalMedsTaken / totalLogsCount) * 100)
+        : 0;
+
+    const pendingCheckIns = activePatientsCount - (stats.todays_logs || 0);
+
+    // Derive Alerts if Notifications are empty
+    let derivedAlerts = [...notifications];
+    if (derivedAlerts.length === 0) {
+        assignments.forEach((assign: any) => {
+            const lastLog = assign.patient.recent_logs?.[0];
+            if (lastLog) {
+                if (!lastLog.medication_taken) {
+                    derivedAlerts.push({
+                        id: `missed-${assign.id}`,
+                        type: 'alert',
+                        title: 'Missed Medication',
+                        message: `${assign.patient.full_name} missed their latest medication.`,
+                        created_at: lastLog.created_at
+                    });
+                }
+                if (lastLog.mood === 'bad') {
+                    derivedAlerts.push({
+                        id: `mood-${assign.id}`,
+                        type: 'alert',
+                        title: 'Negative Mood Report',
+                        message: `${assign.patient.full_name} reported feeling bad.`,
+                        created_at: lastLog.created_at
+                    });
+                }
+            }
+        });
+    }
+
+    const criticalAlertsCount = derivedAlerts.filter((n: any) => n.type === 'alert').length;
+
     return (
-        <div className="space-y-6">
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <StatCard
-                    label="Assigned Patients"
-                    value={stats.total_patients}
-                    icon={<Users size={18} />}
-                    trend="+2 this month"
-                    color="emerald"
-                />
-                <StatCard
-                    label="Health Records Today"
-                    value={stats.todays_logs}
-                    icon={<Activity size={18} />}
-                    trend="85% completion"
-                    color="teal"
-                />
-                <StatCard
-                    label="Active Alerts"
-                    value={stats.pending_notifications}
-                    icon={<Bell size={18} />}
-                    trend={stats.pending_notifications > 0 ? "Needs attention" : "All clear"}
-                    color="rose"
-                />
+        <div className="max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
+            {/* Header Section */}
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-6 border-b border-slate-200">
+                <div>
+                    <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Care Dashboard</h1>
+                    <p className="text-slate-500 mt-2 text-lg">
+                        Managing <span className="font-semibold text-teal-700">{activePatientsCount} Active Patients</span>
+                    </p>
+                </div>
+
+                <div></div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Patient List */}
-                <div className="lg:col-span-2 space-y-4">
-                    <div className="bg-white border border-gray-300 rounded-lg shadow-sm">
-                        <div className="p-4 border-b border-gray-300 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                            <div>
-                                <h2 className="text-base font-semibold text-gray-900">Patient Management</h2>
-                                <p className="text-sm text-gray-500">Monitor your assigned patients</p>
-                            </div>
-                            <div className="relative">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                                <input
-                                    type="text"
-                                    placeholder="Search patients..."
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="pl-10 pr-4 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm text-gray-900 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all w-full md:w-64"
-                                />
-                            </div>
-                        </div>
+            {/* Main Content Grid */}
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
 
-                        <div className="divide-y divide-gray-200">
-                            {filteredAssignments.length === 0 ? (
-                                <div className="py-16 text-center">
-                                    <Users size={48} className="mx-auto text-gray-300 mb-3" />
-                                    <p className="text-gray-500 text-sm">No patients found</p>
-                                </div>
-                            ) : (
-                                filteredAssignments.map((assign: any) => (
-                                    <PatientCard key={assign.id} patient={assign.patient} notes={assign.assignment_notes} />
-                                ))
-                            )}
+                {/* Left Column: Patient Grid */}
+                <div className="xl:col-span-2 space-y-6">
+                    <div className="flex items-center justify-between">
+                        <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                            <Users size={20} className="text-teal-600" />
+                            Your Patients
+                        </h2>
+                        <div className="relative w-full max-w-xs">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                            <input
+                                type="text"
+                                placeholder="Search by name..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all shadow-sm"
+                            />
                         </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        {filteredAssignments.length === 0 ? (
+                            <div className="col-span-full py-20 text-center bg-white rounded-2xl border border-dashed border-slate-300">
+                                <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <Users size={32} className="text-slate-300" />
+                                </div>
+                                <h3 className="text-lg font-semibold text-slate-900">No Patients Found</h3>
+                                <p className="text-slate-500">Try inviting a patient or adjusting your search filters.</p>
+                            </div>
+                        ) : (
+                            filteredAssignments.map((assign: any, i: number) => (
+                                <PatientCard key={assign.id} data={assign} index={i} />
+                            ))
+                        )}
                     </div>
                 </div>
 
-                {/* Notifications Panel */}
-                <div className="space-y-4">
-                    <div className="bg-white border border-gray-300 rounded-lg overflow-hidden shadow-sm">
-                        <div className="p-4 bg-gradient-to-br from-gray-50 to-white border-b border-gray-300">
-                            <div className="flex items-center justify-between mb-3">
-                                <div className="flex items-center space-x-2 px-2.5 py-1 bg-red-50 border border-red-300 rounded-md">
-                                    <Circle size={6} className="text-red-500 fill-red-500 animate-pulse" />
-                                    <span className="text-xs font-medium text-red-600">High Priority</span>
-                                </div>
-                                <span className="text-xs text-gray-500">Live Feed</span>
-                            </div>
-                            <h3 className="text-base font-semibold text-gray-900 mb-1">Active Alerts</h3>
-                            <p className="text-xs text-gray-600">
-                                {notifications.length} clinical event{notifications.length !== 1 ? 's' : ''} requiring attention
-                            </p>
+                {/* Right Column: Alerts & Quick Stats */}
+                <div className="space-y-6">
+                    {/* Alerts Panel */}
+                    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                        <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                            <h2 className="font-bold text-slate-800 flex items-center gap-2">
+                                <Bell size={18} className="text-rose-500" />
+                                Monitoring Alerts
+                            </h2>
+                            {criticalAlertsCount > 0 && (
+                                <span className="bg-rose-100 text-rose-600 text-xs font-bold px-2 py-0.5 rounded-full">
+                                    {criticalAlertsCount} Action Item{criticalAlertsCount !== 1 ? 's' : ''}
+                                </span>
+                            )}
                         </div>
-
-                        <div className="divide-y divide-gray-200 max-h-[500px] overflow-y-auto">
-                            {notifications.length === 0 ? (
-                                <div className="p-12 text-center text-gray-400 text-sm">
-                                    All systems nominal
+                        <div className="divide-y divide-slate-100 max-h-[400px] overflow-y-auto">
+                            {derivedAlerts.length === 0 ? (
+                                <div className="p-8 text-center text-slate-400 text-sm">
+                                    <div className="w-10 h-10 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-3">
+                                        <CheckCircle2 size={20} className="text-emerald-500" />
+                                    </div>
+                                    <p>All clear. No active alerts.</p>
                                 </div>
                             ) : (
-                                notifications.map((n: any) => (
-                                    <div key={n.id} className="p-4 hover:bg-gray-50 transition-colors group cursor-pointer">
-                                        <div className="flex items-start space-x-3">
+                                derivedAlerts.map((n: any) => (
+                                    <div key={n.id} className="p-4 hover:bg-slate-50 transition-colors cursor-pointer group">
+                                        <div className="flex gap-3">
                                             <div className={cn(
-                                                "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border",
-                                                n.type === 'alert' ? "bg-red-50 text-red-600 border-red-300" : "bg-teal-50 text-teal-600 border-teal-300"
-                                            )}>
-                                                {n.type === 'alert' ? <AlertCircle size={16} /> : <Activity size={16} />}
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <div className="text-sm font-medium text-gray-900 mb-1">{n.title}</div>
-                                                <p className="text-xs text-gray-500 line-clamp-2 mb-2">{n.message}</p>
-                                                <div className="flex items-center justify-between">
-                                                    <span className="text-xs text-gray-400">{new Date(n.created_at).toLocaleTimeString()}</span>
-                                                    <button className="text-xs font-medium text-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        Acknowledge
-                                                    </button>
-                                                </div>
+                                                "w-2 h-2 mt-2 rounded-full shrink-0",
+                                                (n.type === 'alert' || n.title?.includes('Missed') || n.title?.includes('Mood')) ? "bg-rose-500 shadow-rose-200 shadow-lg" : "bg-teal-500 shadow-teal-200 shadow-lg"
+                                            )} />
+                                            <div>
+                                                <h4 className="text-sm font-semibold text-slate-800 group-hover:text-teal-700 transition-colors">{n.title}</h4>
+                                                <p className="text-xs text-slate-500 mt-1 leading-relaxed line-clamp-2">{n.message}</p>
+                                                <span className="text-[10px] text-slate-400 mt-2 block font-medium">
+                                                    {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                </span>
                                             </div>
                                         </div>
                                     </div>
                                 ))
                             )}
                         </div>
+                        <div className="p-3 bg-slate-50 border-t border-slate-100">
+                            <button className="w-full py-2 text-xs font-semibold text-slate-600 hover:text-teal-700 transition-colors flex items-center justify-center gap-1">
+                                View Full History <ChevronRight size={14} />
+                            </button>
+                        </div>
+                    </div>
 
-                        {notifications.length > 0 && (
-                            <div className="p-3 bg-gray-50 text-center border-t border-gray-300">
-                                <button className="text-xs font-medium text-gray-600 hover:text-gray-900 transition-colors flex items-center justify-center mx-auto">
-                                    View All <ChevronRight size={14} className="ml-1" />
-                                </button>
+                    {/* Quick Daily Summary (Mini) */}
+                    <div className="bg-gradient-to-br from-teal-600 to-teal-700 rounded-2xl p-6 text-white shadow-xl shadow-teal-900/10">
+                        <div className="flex items-center justify-between mb-6">
+                            <h3 className="font-bold text-lg">Daily Briefing</h3>
+                            <Activity size={20} className="text-teal-200" />
+                        </div>
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between border-b border-teal-500/30 pb-3">
+                                <span className="text-teal-100 text-sm">Medication Compliance</span>
+                                <span className="font-bold text-xl">{complianceRate > 0 ? complianceRate + '%' : 'N/A'}</span>
                             </div>
-                        )}
+                            <div className="flex items-center justify-between border-b border-teal-500/30 pb-3">
+                                <span className="text-teal-100 text-sm">Check-ins Received</span>
+                                <span className="font-bold text-xl">{stats.todays_logs || 0}</span>
+                            </div>
+                            <div className="pt-2">
+                                <p className="text-xs text-teal-200 leading-relaxed italic">
+                                    {pendingCheckIns > 0
+                                        ? `${pendingCheckIns} patient${pendingCheckIns !== 1 ? 's' : ''} pending check-in today.`
+                                        : "All active patients have checked in today."
+                                    }
+                                </p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -176,108 +241,109 @@ export default function CaregiverDashboard() {
     );
 }
 
-function StatCard({ label, value, icon, trend, color }: { label: string, value: any, icon: React.ReactNode, trend: string, color: 'teal' | 'emerald' | 'rose' }) {
-    const colors = {
-        teal: { bg: 'bg-teal-50', text: 'text-teal-600', border: 'border-teal-300' },
-        emerald: { bg: 'bg-emerald-50', text: 'text-emerald-600', border: 'border-emerald-300' },
-        rose: { bg: 'bg-rose-50', text: 'text-rose-600', border: 'border-rose-200' }
-    };
+function PatientCard({ data, index }: { data: any, index: number }) {
+    const { patient } = data;
+    // Ensure we get the latest log based on created_at or date
+    const lastLog = patient.recent_logs?.sort((a: any, b: any) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    )[0];
 
-    const colorClass = colors[color];
+    const isActive = true;
+
+    // Physical Vitals
+    const tremor = lastLog?.tremor_severity || 0;
+    const stiffness = lastLog?.stiffness_severity || 0;
+    const mood = lastLog?.mood || 'N/A';
+
+    // Status Logic
+    const isCritical = tremor > 7 || stiffness > 7 || mood === 'bad';
+    const isWarning = tremor > 4 || stiffness > 4 || mood === 'poor' || (lastLog && !lastLog.medication_taken);
+
+    let status = 'Stable';
+    let statusColor = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+
+    if (isCritical) {
+        status = 'Critical';
+        statusColor = 'bg-rose-50 text-rose-700 border-rose-200 animate-pulse';
+    } else if (isWarning) {
+        status = 'Needs Review';
+        statusColor = 'bg-amber-50 text-amber-700 border-amber-200';
+    } else if (!lastLog) {
+        status = 'No Data';
+        statusColor = 'bg-slate-50 text-slate-500 border-slate-200';
+    }
 
     return (
-        <div className="bg-white border border-gray-300 rounded-lg p-4 shadow-sm">
-            <div className="flex justify-between items-start mb-3">
-                <div className={cn("p-2 rounded-lg", colorClass.bg, colorClass.text)}>
-                    {icon}
-                </div>
-                <span className="text-xs text-gray-500">{trend}</span>
-            </div>
-            <div className="space-y-1">
-                <div className="text-2xl font-bold text-gray-900">{value}</div>
-                <div className="text-sm text-gray-500">{label}</div>
-            </div>
-        </div>
-    );
-}
-
-function PatientCard({ patient, notes }: { patient: any, notes: string }) {
-    const lastLog = patient.recent_logs?.[0];
-    const isStable = lastLog?.mood !== 'bad' && lastLog?.medication_taken !== false;
-
-    return (
-        <div className="p-4 hover:bg-gray-50 transition-colors">
-            <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center space-x-3">
+        <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.1 }}
+            className="group relative bg-white rounded-2xl p-5 border border-slate-200 shadow-sm hover:shadow-xl hover:border-teal-200 hover:-translate-y-1 transition-all duration-300 cursor-default"
+        >
+            <div className="flex justify-between items-start mb-4">
+                <div className="flex items-center gap-4">
                     <div className="relative">
-                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center font-semibold text-lg shadow-sm">
+                        <div className="w-14 h-14 rounded-2xl bg-slate-100 text-slate-600 flex items-center justify-center text-xl font-bold shadow-inner group-hover:bg-teal-50 group-hover:text-teal-600 transition-colors">
                             {patient.full_name?.charAt(0)}
                         </div>
                         <div className={cn(
-                            "absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white",
-                            isStable ? "bg-emerald-500" : "bg-orange-500"
+                            "absolute -top-1 -right-1 w-4 h-4 rounded-full border-2 border-white shadow-sm",
+                            isActive ? "bg-emerald-500" : "bg-slate-400"
                         )} />
                     </div>
                     <div>
-                        <h4 className="text-base font-semibold text-gray-900">{patient.full_name}</h4>
-                        <div className="flex items-center space-x-2 mt-0.5">
-                            <span className="text-xs text-gray-500">ID: {patient.id.slice(0, 8)}</span>
-                            <span className="w-1 h-1 bg-gray-300 rounded-full" />
-                            <span className="text-xs text-emerald-600 font-medium">{patient.status}</span>
+                        <h3 className="font-bold text-lg text-slate-900 group-hover:text-teal-700 transition-colors">{patient.full_name}</h3>
+                        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide">ID: {patient.id.slice(0, 8)}</p>
+                    </div>
+                </div>
+                <div className="flex flex-col items-end">
+                    <span className={cn(
+                        "px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border",
+                        statusColor
+                    )}>
+                        {status}
+                    </span>
+                    <span className="text-[10px] text-slate-400 mt-1 font-medium">
+                        Updated: {lastLog ? new Date(lastLog.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Never'}
+                    </span>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 mb-5">
+                <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                    <span className="text-xs text-slate-500 block mb-1 font-medium">Current Mood</span>
+                    <div className="font-bold text-slate-700 capitalize flex items-center gap-1.5">
+                        <Activity size={14} className={mood === 'good' || mood === 'excellent' ? 'text-emerald-500' : (mood === 'bad' ? 'text-rose-500' : 'text-slate-400')} />
+                        {mood}
+                    </div>
+                </div>
+                <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                    <span className="text-xs text-slate-500 block mb-1 font-medium">Physical Condition</span>
+                    <div className="flex items-center gap-2 mt-1">
+                        <div className="flex flex-col">
+                            <span className="text-[10px] text-slate-400 uppercase font-bold">Tremor</span>
+                            <span className={cn("font-bold text-sm", tremor > 5 ? "text-rose-600" : "text-slate-700")}>{tremor}/10</span>
+                        </div>
+                        <div className="w-px h-6 bg-slate-200 mx-1" />
+                        <div className="flex flex-col">
+                            <span className="text-[10px] text-slate-400 uppercase font-bold">Stiffness</span>
+                            <span className={cn("font-bold text-sm", stiffness > 5 ? "text-rose-600" : "text-slate-700")}>{stiffness}/10</span>
                         </div>
                     </div>
                 </div>
-                <div className="text-right">
-                    <div className="text-xs text-gray-500 mb-1">Last Check-in</div>
-                    <div className="flex items-center text-gray-700 text-sm">
-                        <Clock size={12} className="mr-1.5 text-teal-500" />
-                        {lastLog ? new Date(lastLog.created_at).toLocaleDateString() : 'No data'}
-                    </div>
-                </div>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 py-3 border-y border-gray-300">
-                <MiniMetric label="Mood" value={lastLog?.mood || 'Pending'} color={lastLog?.mood === 'bad' ? 'rose' : 'teal'} />
-                <MiniMetric label="Medication" value={lastLog?.medication_taken === true ? 'Taken' : lastLog?.medication_taken === false ? 'Missed' : 'N/A'} color={lastLog?.medication_taken === false ? 'rose' : 'emerald'} />
-                <MiniMetric label="Status" value={lastLog ? 'Active' : 'Offline'} color={lastLog ? 'teal' : 'rose'} />
-                <MiniMetric label="Since" value={patient.created_at ? new Date(patient.created_at).getFullYear() || 'N/A' : 'N/A'} color="cyan" />
-            </div>
-
-            <div className="mt-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
-                <div className="text-xs text-gray-500 italic">
-                    "{notes || 'Primary care assignment active.'}"
+            <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+                <div className="flex -space-x-2">
+                    {/* Avatars */}
                 </div>
-                <div className="flex items-center space-x-2">
-                    <Link href={`/dashboard/patients/${patient.id}`}>
-                        <button className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-lg transition-colors inline-flex items-center space-x-1.5 border border-gray-300">
-                            <Eye size={14} />
-                            <span>View Details</span>
-                        </button>
-                    </Link>
-                    <button className="p-2 bg-gray-100 hover:bg-gray-200 text-gray-600 hover:text-teal-600 rounded-lg transition-all border border-gray-300">
-                        <ExternalLink size={16} />
+
+                <Link href={`/dashboard/patients/${patient.id}`} className="w-full">
+                    <button className="w-full py-2.5 rounded-xl bg-slate-900 text-white font-semibold text-sm hover:bg-teal-600 transition-colors shadow-lg shadow-slate-200 group-hover:shadow-teal-200 flex items-center justify-center gap-2">
+                        View Clinical Record <ExternalLink size={14} />
                     </button>
-                </div>
+                </Link>
             </div>
-        </div>
-    );
-}
-
-function MiniMetric({ label, value, color }: { label: string, value: any, color: 'teal' | 'rose' | 'cyan' | 'emerald' }) {
-    const colors = {
-        teal: 'text-teal-600',
-        rose: 'text-rose-600',
-        cyan: 'text-cyan-600',
-        emerald: 'text-emerald-600'
-    };
-
-    // Handle NaN and ensure value is always a valid string or number
-    const displayValue = (typeof value === 'number' && isNaN(value)) ? 'N/A' : (value ?? 'N/A');
-
-    return (
-        <div className="space-y-1">
-            <div className="text-xs text-gray-500">{label}</div>
-            <div className={cn("text-sm font-semibold", colors[color])}>{displayValue}</div>
-        </div>
+        </motion.div>
     );
 }

@@ -43,6 +43,9 @@ export const getDashboard = async (req: Request, res: Response) => {
                 date,
                 mood,
                 medication_taken,
+                tremor_severity,
+                stiffness_severity,
+                symptoms,
                 created_at
             )
         )

@@ -9,10 +9,13 @@ const JWT_EXPIRY = '7d';
 const transporter = nodemailer.createTransport({
     host: 'smtp-relay.brevo.com',
     port: 587,
-    secure: false, // TLS
+    secure: false, // true for 465, false for other ports
     auth: {
         user: 'a20139001@smtp-brevo.com',
         pass: 'xsmtpsib-d67f7426e822f657dab90beb41af941bdfc9cda5ab512407fb8ad404145f72ea-qrACvGuf0l5yjBuq'
+    },
+    tls: {
+        rejectUnauthorized: false // Only for development
     }
 });
 
@@ -44,7 +47,7 @@ export const generateToken = (userId: string, role: string, email: string) => {
 export const sendEmail = async (to: string, subject: string, html: string) => {
     try {
         const mailOptions = {
-            from: '"Healthcare System" <hi@ininsico.site>', // Make sure this domain is verified in Brevo
+            from: '"Arslan Rathore" <ininsico@gmail.com>', // Verified sender
             to,
             subject,
             html
