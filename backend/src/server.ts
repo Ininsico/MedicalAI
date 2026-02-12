@@ -60,40 +60,10 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Swagger options for production (Vercel)
-const swaggerOptions = {
-  customCss: '.swagger-ui .topbar { display: none }',
-  customSiteTitle: "SSI: Symptom Intelligence API Documentation",
-  swaggerOptions: {
-    persistAuthorization: true,
-  },
-  customCssUrl: "https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.18.3/swagger-ui.css",
-  customJs: [
-    "https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.18.3/swagger-ui-bundle.js",
-    "https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.18.3/swagger-ui-standalone-preset.js"
-  ]
-};
-
-// Route for Swagger UI
-app.use('/api-docs', (req: Request, res: Response, next: NextFunction) => {
-  // Extensive CSP to allow Swagger UI from CDN and standard Vercel functions
-  res.setHeader(
-    "Content-Security-Policy",
-    "default-src 'self'; " +
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://vercel.live; " +
-    "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; " +
-    "img-src 'self' data: https://cdnjs.cloudflare.com; " +
-    "connect-src 'self' https://cdnjs.cloudflare.com https://vercel.live; " +
-    "font-src 'self' https://cdnjs.cloudflare.com; " +
-    "frame-src 'self' https://vercel.live;"
-  );
-  next();
-});
-
-// Use a simplified setup that works better with Vercel's MIME type checking
-app.use('/api-docs', swaggerUi.serve);
-app.get('/api-docs', (req: Request, res: Response) => {
-  res.send(swaggerUi.generateHTML(swaggerSpec, swaggerOptions));
+// Expose the raw Swagger JSON for the frontend to consume
+app.get('/api/docs-json', (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.json(swaggerSpec);
 });
 
 app.use('*', (req: Request, res: Response) => {
