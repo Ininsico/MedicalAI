@@ -64,11 +64,9 @@ app.get('/health', (req, res) => {
 const swaggerOptions = {
   customCss: '.swagger-ui .topbar { display: none }',
   customSiteTitle: "SSI: Symptom Intelligence API Documentation",
-  customfavIcon: "/favicon.ico",
   swaggerOptions: {
     persistAuthorization: true,
   },
-  // Fix for Vercel CSP/Asset loading
   customCssUrl: "https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.18.3/swagger-ui.css",
   customJs: [
     "https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.18.3/swagger-ui-bundle.js",
@@ -76,11 +74,27 @@ const swaggerOptions = {
   ]
 };
 
-// Disable helmet CSP for swagger-ui uniquely
+// Route for Swagger UI
 app.use('/api-docs', (req: Request, res: Response, next: NextFunction) => {
-  res.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; img-src 'self' data: https://cdnjs.cloudflare.com;");
+  // Extensive CSP to allow Swagger UI from CDN and standard Vercel functions
+  res.setHeader(
+    "Content-Security-Policy",
+    "default-src 'self'; " +
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdnjs.cloudflare.com https://vercel.live; " +
+    "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; " +
+    "img-src 'self' data: https://cdnjs.cloudflare.com; " +
+    "connect-src 'self' https://cdnjs.cloudflare.com https://vercel.live; " +
+    "font-src 'self' https://cdnjs.cloudflare.com; " +
+    "frame-src 'self' https://vercel.live;"
+  );
   next();
-}, swaggerUi.serve, swaggerUi.setup(swaggerSpec, swaggerOptions));
+});
+
+// Use a simplified setup that works better with Vercel's MIME type checking
+app.use('/api-docs', swaggerUi.serve);
+app.get('/api-docs', (req: Request, res: Response) => {
+  res.send(swaggerUi.generateHTML(swaggerSpec, swaggerOptions));
+});
 
 app.use('*', (req: Request, res: Response) => {
   res.status(404).json({
