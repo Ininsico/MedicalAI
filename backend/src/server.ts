@@ -52,8 +52,6 @@ app.use('/api/patients', patientRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/ai', aiRoutes);
 
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-
 app.get('/health', (req, res) => {
   res.json({
     status: 'healthy',
@@ -61,6 +59,28 @@ app.get('/health', (req, res) => {
     supabaseConnected: !!supabase
   });
 });
+
+// Swagger options for production (Vercel)
+const swaggerOptions = {
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: "SSI: Symptom Intelligence API Documentation",
+  customfavIcon: "/favicon.ico",
+  swaggerOptions: {
+    persistAuthorization: true,
+  },
+  // Fix for Vercel CSP/Asset loading
+  customCssUrl: "https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.18.3/swagger-ui.css",
+  customJs: [
+    "https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.18.3/swagger-ui-bundle.js",
+    "https://cdnjs.cloudflare.com/ajax/libs/swagger-ui/4.18.3/swagger-ui-standalone-preset.js"
+  ]
+};
+
+// Disable helmet CSP for swagger-ui uniquely
+app.use('/api-docs', (req: Request, res: Response, next: NextFunction) => {
+  res.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; img-src 'self' data: https://cdnjs.cloudflare.com;");
+  next();
+}, swaggerUi.serve, swaggerUi.setup(swaggerSpec, swaggerOptions));
 
 app.use('*', (req: Request, res: Response) => {
   res.status(404).json({
