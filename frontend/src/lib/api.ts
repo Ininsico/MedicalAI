@@ -44,6 +44,7 @@ export const api = {
     },
     patient: {
         createLog: (patientId: string, logData: any) => request<any>(`/patients/${patientId}/logs`, 'POST', logData),
+        updateLog: (patientId: string, logId: string, logData: any) => request<any>(`/patients/${patientId}/logs/${logId}`, 'PUT', logData),
         getLogs: (patientId: string) => request<any>(`/patients/${patientId}/logs`, 'GET'),
         getCaregivers: (patientId: string) => request<any>(`/patients/${patientId}/caregivers`, 'GET'),
     },

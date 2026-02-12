@@ -1,42 +1,47 @@
-
 "use client";
 
 import React, { useEffect, useState, Suspense } from 'react';
 import { api } from '@/lib/api';
-import { Card } from '@/components/ui/Card';
 import { cn } from '@/lib/utils';
 import {
     TrendingUp,
-    Zap,
-    Filter,
-    Sparkles,
     Activity,
-    LogOut
+    ArrowLeft,
+    Calendar,
+    Heart,
+    Moon,
+    Pill,
+    Zap,
+    Target,
+    Award
 } from 'lucide-react';
 import {
     ResponsiveContainer,
+    LineChart,
+    Line,
     AreaChart,
     Area,
+    BarChart,
+    Bar,
     XAxis,
     YAxis,
     CartesianGrid,
     Tooltip,
-    BarChart,
-    Bar,
-    Cell
+    Legend
 } from 'recharts';
-
 import { useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
+import { motion } from 'framer-motion';
 
 function TrendsContent() {
+    const router = useRouter();
     const searchParams = useSearchParams();
     const patientId = searchParams.get('u');
-    const [range, setRange] = useState(7);
+    const [range, setRange] = useState(30);
     const [loading, setLoading] = useState(true);
     const [data, setData] = useState<any[]>([]);
     const [role, setRole] = useState<'patient' | 'caregiver'>('patient');
     const [patientInfo, setPatientInfo] = useState<any>(null);
-    const [assignments, setAssignments] = useState<any[]>([]);
 
     useEffect(() => {
         async function fetchData() {
@@ -50,24 +55,12 @@ function TrendsContent() {
                 let logs = [];
                 if (user.role === 'caregiver') {
                     let targetId = patientId;
-                    let fetchedAssignments: any[] = [];
-
-                    // Fetch assignments to populate dropdown list
-                    try {
+                    if (!targetId) {
                         const dashboard = await api.caregiver.getDashboard();
-                        if (dashboard?.assignments) {
-                            fetchedAssignments = dashboard.assignments;
-                            setAssignments(fetchedAssignments);
+                        if (dashboard?.assignments?.length > 0) {
+                            targetId = dashboard.assignments[0].patient.id;
                         }
-                    } catch (err) {
-                        console.error("Failed to fetch assignments", err);
                     }
-
-                    // If no patient ID in URL, find the first assigned patient
-                    if (!targetId && fetchedAssignments.length > 0) {
-                        targetId = fetchedAssignments[0].patient.id;
-                    }
-
                     if (targetId) {
                         const res = await api.caregiver.getPatientLogs(targetId);
                         logs = res.logs || [];
@@ -78,35 +71,132 @@ function TrendsContent() {
                 }
 
                 if (logs) {
-                    const recentLogs = logs.slice(0, range).reverse();
-                    const formatted = recentLogs.map((log: any) => {
-                        let moodVal = 5;
-                        const mood = log.mood?.toLowerCase();
-                        switch (mood) {
-                            case 'excellent': moodVal = 10; break;
-                            case 'good': moodVal = 8; break;
-                            case 'neutral': moodVal = 5; break;
-                            case 'poor': moodVal = 3; break;
-                            case 'bad': moodVal = 1; break;
-                        }
+                    let processedData: any[] = [];
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
 
-                        let mobVal = 5;
-                        const a = log.activity_level?.toLowerCase();
-                        if (a === 'high' || a === 'very active') mobVal = 9;
-                        else if (a === 'moderate') mobVal = 6;
-                        else if (a === 'low' || a === 'sedentary') mobVal = 3;
+                    if (range === 7) {
+                        // 7 days: From Monday of current week to today
+                        const monday = new Date(today);
+                        const dayOfWeek = monday.getDay();
+                        const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek; // If Sunday, go back 6 days, else go to Monday
+                        monday.setDate(monday.getDate() + diff);
 
-                        return {
-                            date: new Date(log.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
-                            tremor: log.tremor_severity || 0,
-                            stiffness: log.stiffness_severity || 0,
-                            sleep: log.sleep_hours || 0,
-                            mood: moodVal,
-                            mobility: mobVal,
-                            medication: log.medication_taken ? 10 : 0
-                        };
-                    });
-                    setData(formatted);
+                        // Filter logs from Monday to today
+                        const weekLogs = logs.filter((log: any) => {
+                            const logDate = new Date(log.date);
+                            logDate.setHours(0, 0, 0, 0);
+                            return logDate >= monday && logDate <= today;
+                        }).reverse();
+
+                        processedData = weekLogs.map((log: any) => {
+                            let moodVal = 5;
+                            const mood = log.mood?.toLowerCase();
+                            switch (mood) {
+                                case 'excellent': moodVal = 10; break;
+                                case 'good': moodVal = 8; break;
+                                case 'neutral': moodVal = 5; break;
+                                case 'poor': moodVal = 3; break;
+                                case 'bad': moodVal = 1; break;
+                            }
+                            return {
+                                date: new Date(log.date).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' }),
+                                tremor: log.tremor_severity || 0,
+                                stiffness: log.stiffness_severity || 0,
+                                sleep: log.sleep_hours || 0,
+                                mood: moodVal,
+                                medication: log.medication_taken ? 10 : 0
+                            };
+                        });
+                    } else if (range === 30) {
+                        // 30 days: From 1st of current month to today
+                        const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+
+                        const monthLogs = logs.filter((log: any) => {
+                            const logDate = new Date(log.date);
+                            logDate.setHours(0, 0, 0, 0);
+                            return logDate >= firstOfMonth && logDate <= today;
+                        }).reverse();
+
+                        processedData = monthLogs.map((log: any) => {
+                            let moodVal = 5;
+                            const mood = log.mood?.toLowerCase();
+                            switch (mood) {
+                                case 'excellent': moodVal = 10; break;
+                                case 'good': moodVal = 8; break;
+                                case 'neutral': moodVal = 5; break;
+                                case 'poor': moodVal = 3; break;
+                                case 'bad': moodVal = 1; break;
+                            }
+                            return {
+                                date: new Date(log.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+                                tremor: log.tremor_severity || 0,
+                                stiffness: log.stiffness_severity || 0,
+                                sleep: log.sleep_hours || 0,
+                                mood: moodVal,
+                                medication: log.medication_taken ? 10 : 0
+                            };
+                        });
+                    } else if (range === 90) {
+                        // 90 days: Monthly averages for last 3 months
+                        const threeMonthsAgo = new Date(today);
+                        threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+                        threeMonthsAgo.setDate(1);
+
+                        const last3MonthsLogs = logs.filter((log: any) => {
+                            const logDate = new Date(log.date);
+                            logDate.setHours(0, 0, 0, 0);
+                            return logDate >= threeMonthsAgo && logDate <= today;
+                        });
+
+                        // Group by month
+                        const monthlyData: any = {};
+                        last3MonthsLogs.forEach((log: any) => {
+                            const logDate = new Date(log.date);
+                            const monthKey = logDate.toLocaleDateString(undefined, { year: 'numeric', month: 'short' });
+
+                            if (!monthlyData[monthKey]) {
+                                monthlyData[monthKey] = {
+                                    tremor: [],
+                                    stiffness: [],
+                                    sleep: [],
+                                    mood: [],
+                                    medication: []
+                                };
+                            }
+
+                            let moodVal = 5;
+                            const mood = log.mood?.toLowerCase();
+                            switch (mood) {
+                                case 'excellent': moodVal = 10; break;
+                                case 'good': moodVal = 8; break;
+                                case 'neutral': moodVal = 5; break;
+                                case 'poor': moodVal = 3; break;
+                                case 'bad': moodVal = 1; break;
+                            }
+
+                            monthlyData[monthKey].tremor.push(log.tremor_severity || 0);
+                            monthlyData[monthKey].stiffness.push(log.stiffness_severity || 0);
+                            monthlyData[monthKey].sleep.push(log.sleep_hours || 0);
+                            monthlyData[monthKey].mood.push(moodVal);
+                            monthlyData[monthKey].medication.push(log.medication_taken ? 10 : 0);
+                        });
+
+                        // Calculate averages for each month
+                        processedData = Object.keys(monthlyData).map(monthKey => {
+                            const data = monthlyData[monthKey];
+                            return {
+                                date: monthKey,
+                                tremor: Math.round((data.tremor.reduce((a: number, b: number) => a + b, 0) / data.tremor.length) * 10) / 10,
+                                stiffness: Math.round((data.stiffness.reduce((a: number, b: number) => a + b, 0) / data.stiffness.length) * 10) / 10,
+                                sleep: Math.round((data.sleep.reduce((a: number, b: number) => a + b, 0) / data.sleep.length) * 10) / 10,
+                                mood: Math.round((data.mood.reduce((a: number, b: number) => a + b, 0) / data.mood.length) * 10) / 10,
+                                medication: Math.round((data.medication.reduce((a: number, b: number) => a + b, 0) / data.medication.length) * 10) / 10
+                            };
+                        });
+                    }
+
+                    setData(processedData);
                 }
             } catch (error) {
                 console.error("Failed to fetch trends:", error);
@@ -117,307 +207,318 @@ function TrendsContent() {
         fetchData();
     }, [range, patientId]);
 
+    // Calculate statistics
+    const stats = {
+        avgTremor: data.length > 0 ? (data.reduce((sum, d) => sum + d.tremor, 0) / data.length).toFixed(1) : '0',
+        avgStiffness: data.length > 0 ? (data.reduce((sum, d) => sum + d.stiffness, 0) / data.length).toFixed(1) : '0',
+        avgSleep: data.length > 0 ? (data.reduce((sum, d) => sum + d.sleep, 0) / data.length).toFixed(1) : '0',
+        avgMood: data.length > 0 ? (data.reduce((sum, d) => sum + d.mood, 0) / data.length).toFixed(1) : '0',
+        adherence: data.length > 0 ? Math.round((data.filter(d => d.medication > 0).length / data.length) * 100) : 0,
+        stability: data.length > 0 ? Math.round((data.filter(d => d.tremor < 6 && d.stiffness < 6).length / data.length) * 100) : 0
+    };
+
     return (
-        <div className="space-y-12 pb-24">
-            <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-                <div>
-                    <div className="flex items-center space-x-3 text-teal-600 font-black text-xs uppercase tracking-[0.3em] mb-3">
-                        <TrendingUp size={14} />
-                        <span>Longitudinal Data Stream</span>
-                    </div>
-                    <div className="flex items-center space-x-4">
-                        <h1 className="text-5xl font-black text-slate-900 tracking-tighter">
-                            {patientInfo ? patientInfo.full_name : 'Symptom'} <span className="text-slate-400 italic font-serif font-light">{patientInfo ? 'Trends' : 'Trajectory'}</span>
-                        </h1>
-                        {role === 'caregiver' && assignments.length > 0 && (
-                            <div className="relative">
-                                <select
-                                    className="appearance-none bg-white/50 border border-white pl-4 pr-10 py-2 rounded-xl text-sm font-bold text-slate-600 focus:outline-none focus:ring-2 focus:ring-teal-500/20 shadow-premium backdrop-blur-xl cursor-pointer"
-                                    onChange={(e) => {
-                                        const pid = e.target.value;
-                                        // Update URL without full reload if possible, or trigger refetch
-                                        // For simplicity, let's just trigger a refetch by updating state and URL 
-                                        const newUrl = new URL(window.location.href);
-                                        newUrl.searchParams.set('u', pid);
-                                        window.history.pushState({}, '', newUrl.toString());
-                                        // Force re-execution of effect by updating searchParams visually or just creating a local state trigger
-                                        // Actually the effect depends on [range, patientId]. 
-                                        // We can't easily force the searchParams hook to update without navigation.
-                                        // So we'll use window.location.assign or router.push 
-                                        window.location.href = `/dashboard/trends?u=${pid}`;
-                                    }}
-                                    value={patientInfo?.id || ''}
-                                >
-                                    {assignments.map((a: any) => (
-                                        <option key={a.patient.id} value={a.patient.id}>
-                                            {a.patient.full_name}
-                                        </option>
-                                    ))}
-                                </select>
-                                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                                    <Filter size={14} />
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                <div className="flex items-center space-x-6">
-                    <div className="flex items-center space-x-2 bg-white/50 border border-white p-2 rounded-2xl shadow-premium backdrop-blur-xl">
-                        {[7, 30, 90].map((r) => (
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-teal-50/20 pb-12">
+            {/* Professional Header */}
+            <div className="bg-white border-b border-slate-200/60 sticky top-0 z-50 backdrop-blur-lg bg-white/80">
+                <div className="max-w-[1600px] mx-auto px-8 py-6">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-6">
                             <button
-                                key={r}
-                                onClick={() => setRange(r)}
-                                className={cn(
-                                    "px-6 py-2 rounded-xl font-bold text-xs uppercase tracking-widest transition-all",
-                                    range === r ? "bg-slate-900 text-white shadow-lg" : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"
-                                )}
+                                onClick={() => router.push('/dashboard')}
+                                className="p-2.5 hover:bg-slate-100 rounded-xl transition-all group"
                             >
-                                {r} Days
+                                <ArrowLeft size={22} className="text-slate-600 group-hover:text-teal-600 transition-colors" />
                             </button>
-                        ))}
-                    </div>
+                            <div>
+                                <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Health Analytics</h1>
+                                {patientInfo && <p className="text-sm text-slate-500 mt-0.5">{patientInfo.full_name}</p>}
+                            </div>
+                        </div>
 
-                    <button
-                        onClick={() => {
-                            localStorage.removeItem('token');
-                            localStorage.removeItem('user');
-                            window.location.href = '/login';
-                        }}
-                        className="p-4 bg-white/50 border border-white text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-2xl shadow-premium backdrop-blur-xl transition-all group"
-                        title="End Session"
-                    >
-                        <LogOut size={20} className="group-hover:rotate-12 transition-transform" />
-                    </button>
+                        <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2 bg-slate-50 rounded-xl p-1.5 border border-slate-200/60">
+                                {[7, 30, 90].map((r) => (
+                                    <button
+                                        key={r}
+                                        onClick={() => setRange(r)}
+                                        className={cn(
+                                            "px-5 py-2 rounded-lg text-sm font-semibold transition-all",
+                                            range === r
+                                                ? "bg-white text-teal-600 shadow-sm"
+                                                : "text-slate-600 hover:text-slate-900"
+                                        )}
+                                    >
+                                        {r} Days
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            </header>
+            </div>
 
             {loading ? (
-                <div className="flex flex-col items-center justify-center h-[50vh] space-y-4">
-                    <div className="w-12 h-12 border-4 border-teal-500 border-t-transparent rounded-full animate-spin" />
-                    <span className="text-slate-400 font-bold uppercase tracking-widest text-xs">Loading Data...</span>
+                <div className="flex items-center justify-center h-[70vh]">
+                    <div className="text-center">
+                        <div className="w-16 h-16 border-4 border-teal-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                        <p className="text-sm text-slate-500 font-medium">Loading analytics...</p>
+                    </div>
                 </div>
             ) : (
-                <div className="space-y-12">
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        {/* Main Trend Chart */}
-                        <Card className="lg:col-span-2 p-8 shadow-premium border-white/50" hover={false}>
-                            <div className="flex items-center justify-between mb-10">
-                                <div className="flex items-center space-x-4">
-                                    <div className="p-3 bg-teal-50 rounded-xl text-teal-600"><Zap size={20} /></div>
+                <div className="max-w-[1600px] mx-auto px-8 py-8">
+                    {/* Stats Overview Cards */}
+                    <div className="grid grid-cols-6 gap-4 mb-8">
+                        <StatCard icon={Activity} label="Avg Tremor" value={stats.avgTremor} unit="/10" color="teal" />
+                        <StatCard icon={Zap} label="Avg Rigidity" value={stats.avgStiffness} unit="/10" color="cyan" />
+                        <StatCard icon={Moon} label="Avg Sleep" value={stats.avgSleep} unit="hrs" color="blue" />
+                        <StatCard icon={Heart} label="Avg Mood" value={stats.avgMood} unit="/10" color="rose" />
+                        <StatCard icon={Pill} label="Adherence" value={stats.adherence} unit="%" color="emerald" />
+                        <StatCard icon={Target} label="Stability" value={stats.stability} unit="%" color="violet" />
+                    </div>
+
+                    {/* Main Content Grid */}
+                    <div className="grid grid-cols-3 gap-6">
+                        {/* Left Column - Main Chart (2/3 width) */}
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="col-span-2 bg-white rounded-2xl border border-slate-200/60 shadow-sm p-8"
+                        >
+                            <div className="mb-8">
+                                <div className="flex items-center justify-between">
                                     <div>
-                                        <h3 className="text-xl font-black text-slate-900 tracking-tight">Unified Symptom Variance</h3>
-                                        <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Aggregate Score Profile</p>
+                                        <h2 className="text-xl font-bold text-slate-900">Symptom Timeline</h2>
+                                        <p className="text-sm text-slate-500 mt-1">Multi-metric trend analysis</p>
+                                    </div>
+                                    <div className="p-3 bg-teal-50 rounded-xl">
+                                        <TrendingUp size={24} className="text-teal-600" />
                                     </div>
                                 </div>
-                                <Filter size={18} className="text-slate-300" />
                             </div>
 
-                            <div className="h-[400px] w-full">
-                                {data.length > 0 ? (
+                            {data.length > 0 ? (
+                                <div className="h-[420px]">
                                     <ResponsiveContainer width="100%" height="100%">
-                                        <AreaChart data={data}>
-                                            <defs>
-                                                <linearGradient id="colorTremor" x1="0" y1="0" x2="0" y2="1">
-                                                    <stop offset="5%" stopColor="#14b8a6" stopOpacity={0.1} />
-                                                    <stop offset="95%" stopColor="#14b8a6" stopOpacity={0} />
-                                                </linearGradient>
-                                                <linearGradient id="colorStiffness" x1="0" y1="0" x2="0" y2="1">
-                                                    <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.1} />
-                                                    <stop offset="95%" stopColor="#f43f5e" stopOpacity={0} />
-                                                </linearGradient>
-                                                <linearGradient id="colorSleep" x1="0" y1="0" x2="0" y2="1">
-                                                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1} />
-                                                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                                                </linearGradient>
-                                                <linearGradient id="colorMood" x1="0" y1="0" x2="0" y2="1">
-                                                    <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.1} />
-                                                    <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0} />
-                                                </linearGradient>
-                                                <linearGradient id="colorMobility" x1="0" y1="0" x2="0" y2="1">
-                                                    <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.1} />
-                                                    <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
-                                                </linearGradient>
-                                            </defs>
-                                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                        <LineChart data={data}>
+                                            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                                             <XAxis
                                                 dataKey="date"
-                                                axisLine={false}
+                                                tick={{ fill: '#64748b', fontSize: 12, fontWeight: 600 }}
+                                                axisLine={{ stroke: '#e2e8f0' }}
                                                 tickLine={false}
-                                                tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }}
-                                                dy={10}
                                             />
                                             <YAxis
-                                                axisLine={false}
-                                                tickLine={false}
-                                                tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 700 }}
                                                 domain={[0, 10]}
+                                                tick={{ fill: '#64748b', fontSize: 12, fontWeight: 600 }}
+                                                axisLine={{ stroke: '#e2e8f0' }}
+                                                tickLine={false}
                                             />
                                             <Tooltip
-                                                contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', fontWeight: 700 }}
+                                                contentStyle={{
+                                                    backgroundColor: 'white',
+                                                    border: '1px solid #e2e8f0',
+                                                    borderRadius: '12px',
+                                                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                                                    fontSize: '13px',
+                                                    fontWeight: 600
+                                                }}
                                             />
-                                            <Area
-                                                type="monotone"
-                                                dataKey="tremor"
-                                                name="Tremor"
-                                                stroke="#14b8a6"
-                                                strokeWidth={3}
-                                                fillOpacity={1}
-                                                fill="url(#colorTremor)"
-                                                activeDot={{ r: 6, fill: '#14b8a6', stroke: '#fff', strokeWidth: 2 }}
+                                            <Legend
+                                                wrapperStyle={{ fontSize: '13px', fontWeight: 600 }}
+                                                iconType="circle"
                                             />
-                                            <Area
-                                                type="monotone"
-                                                dataKey="stiffness"
-                                                name="Stiffness"
-                                                stroke="#f43f5e"
-                                                strokeWidth={3}
-                                                fillOpacity={1}
-                                                fill="url(#colorStiffness)"
-                                                activeDot={{ r: 6, fill: '#f43f5e', stroke: '#fff', strokeWidth: 2 }}
-                                            />
-                                            <Area
-                                                type="monotone"
-                                                dataKey="sleep"
-                                                name="Sleep (Hrs)"
-                                                stroke="#3b82f6"
-                                                strokeWidth={3}
-                                                fillOpacity={1}
-                                                fill="url(#colorSleep)"
-                                                activeDot={{ r: 6, fill: '#3b82f6', stroke: '#fff', strokeWidth: 2 }}
-                                            />
-                                            <Area
-                                                type="monotone"
-                                                dataKey="mood"
-                                                name="Mood Scale"
-                                                stroke="#8b5cf6"
-                                                strokeWidth={3}
-                                                fillOpacity={1}
-                                                fill="url(#colorMood)"
-                                                activeDot={{ r: 6, fill: '#8b5cf6', stroke: '#fff', strokeWidth: 2 }}
-                                            />
-                                            <Area
-                                                type="monotone"
-                                                dataKey="mobility"
-                                                name="Mobility"
-                                                stroke="#f59e0b"
-                                                strokeWidth={3}
-                                                fillOpacity={1}
-                                                fill="url(#colorMobility)"
-                                                activeDot={{ r: 6, fill: '#f59e0b', stroke: '#fff', strokeWidth: 2 }}
-                                            />
-                                        </AreaChart>
+                                            <Line type="monotone" dataKey="tremor" name="Tremor" stroke="#14b8a6" strokeWidth={3} dot={{ fill: '#14b8a6', r: 5 }} activeDot={{ r: 7 }} />
+                                            <Line type="monotone" dataKey="stiffness" name="Rigidity" stroke="#06b6d4" strokeWidth={3} dot={{ fill: '#06b6d4', r: 5 }} activeDot={{ r: 7 }} />
+                                            <Line type="monotone" dataKey="sleep" name="Sleep" stroke="#3b82f6" strokeWidth={3} dot={{ fill: '#3b82f6', r: 5 }} activeDot={{ r: 7 }} />
+                                            <Line type="monotone" dataKey="mood" name="Mood" stroke="#f43f5e" strokeWidth={3} dot={{ fill: '#f43f5e', r: 5 }} activeDot={{ r: 7 }} />
+                                        </LineChart>
                                     </ResponsiveContainer>
-                                ) : (
-                                    <div className="h-full flex flex-col items-center justify-center text-center space-y-4">
-                                        <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center text-slate-200">
-                                            <Activity size={32} />
-                                        </div>
-                                        <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">Waiting for longitudinal data packets...</p>
-                                    </div>
-                                )}
-                            </div>
-                        </Card>
-
-                        {/* Right Column: AI Insights & Med adherence */}
-                        <div className="space-y-8">
-                            <Card className="p-8 bg-slate-900 border-none text-white overflow-hidden relative" hover={false}>
-                                <div className="absolute top-0 right-0 p-4 opacity-10">
-                                    <Sparkles size={100} />
                                 </div>
-                                <div className="relative z-10">
-                                    <div className="flex items-center space-x-3 mb-6">
-                                        <Sparkles size={18} className="text-teal-400" />
-                                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-teal-400">Pattern Recognition</span>
+                            ) : (
+                                <div className="h-[420px] flex items-center justify-center">
+                                    <div className="text-center">
+                                        <Calendar size={56} className="text-slate-300 mx-auto mb-4" />
+                                        <p className="text-slate-500 font-semibold">No data available</p>
+                                        <p className="text-sm text-slate-400 mt-2">Complete daily check-ins to see trends</p>
                                     </div>
-                                    <h4 className="text-xl font-black mb-4 tracking-tight">Stability Index</h4>
-                                    <p className="text-slate-400 text-sm font-medium leading-relaxed mb-8">
-                                        Your condition has remained within nominal clinical thresholds for {data.length > 0 ? Math.round((data.filter(d => (d.tremor || 0) < 6 && (d.stiffness || 0) < 6).length / data.length) * 100) : 0}% of this {range}-day observation window.
+                                </div>
+                            )}
+                        </motion.div>
+
+                        {/* Right Column - Secondary Charts */}
+                        <div className="space-y-6">
+                            {/* Medication Adherence Card */}
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.1 }}
+                                className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-6"
+                            >
+                                <div className="flex items-center gap-3 mb-6">
+                                    <div className="p-2.5 bg-teal-50 rounded-xl">
+                                        <Pill size={20} className="text-teal-600" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-base font-bold text-slate-900">Medication</h3>
+                                        <p className="text-xs text-slate-500">Adherence Rate</p>
+                                    </div>
+                                </div>
+
+                                <div className="mb-4">
+                                    <div className="text-5xl font-black text-teal-600">{stats.adherence}%</div>
+                                    <p className="text-sm text-slate-500 mt-2">
+                                        {data.filter(d => d.medication > 0).length} of {data.length} days
                                     </p>
-                                    <div className="flex items-center justify-between">
-                                        <div className="h-2 w-32 bg-white/10 rounded-full overflow-hidden">
-                                            <div
-                                                className="h-full bg-teal-500 transition-all duration-1000"
-                                                style={{ width: `${data.length > 0 ? Math.round((data.filter(d => (d.tremor || 0) < 6 && (d.stiffness || 0) < 6).length / data.length) * 100) : 0}%` }}
-                                            />
-                                        </div>
-                                        <span className="font-black text-teal-400 text-lg">
-                                            {data.length > 0 ? Math.round((data.filter(d => (d.tremor || 0) < 6 && (d.stiffness || 0) < 6).length / data.length) * 100) : 0}% Stable
-                                        </span>
-                                    </div>
                                 </div>
-                            </Card>
 
-                            <Card className="p-8 shadow-premium border-white/50" hover={false}>
-                                <h4 className="text-sm font-black text-slate-400 uppercase tracking-widest mb-6 flex items-center">
-                                    <Activity size={14} className="mr-2" /> Med Adherence
-                                </h4>
-                                <div className="h-[200px]">
+                                <div className="h-[140px] mt-6">
                                     <ResponsiveContainer width="100%" height="100%">
                                         <BarChart data={data.slice(-7)}>
-                                            <Bar dataKey="medication" radius={[4, 4, 4, 4]}>
-                                                {data.map((entry, index) => (
-                                                    <Cell key={`cell-${index}`} fill={entry.medication > 0 ? '#14b8a6' : '#f1f5f9'} />
-                                                ))}
-                                            </Bar>
+                                            <Bar dataKey="medication" fill="#14b8a6" radius={[8, 8, 0, 0]} />
                                         </BarChart>
                                     </ResponsiveContainer>
                                 </div>
-                                <p className="mt-4 text-[10px] font-bold text-center text-slate-400 italic">Last 7 Check-ins Adherence Profile</p>
-                            </Card>
+                            </motion.div>
+
+                            {/* Stability Index Card */}
+                            <motion.div
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.2 }}
+                                className="bg-gradient-to-br from-teal-500 to-cyan-600 rounded-2xl p-6 text-white"
+                            >
+                                <div className="flex items-center gap-3 mb-4">
+                                    <div className="p-2.5 bg-white/20 backdrop-blur-sm rounded-xl">
+                                        <Award size={20} className="text-white" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-base font-bold">Stability Index</h3>
+                                        <p className="text-xs text-white/80">Clinical Range</p>
+                                    </div>
+                                </div>
+
+                                <div className="my-6">
+                                    <div className="text-5xl font-black">{stats.stability}%</div>
+                                    <p className="text-sm text-white/90 mt-2">
+                                        Within normal thresholds
+                                    </p>
+                                </div>
+
+                                <div className="flex items-center gap-4">
+                                    <div className="flex-1 h-3 bg-white/20 rounded-full overflow-hidden">
+                                        <div
+                                            className="h-full bg-white rounded-full transition-all duration-1000"
+                                            style={{ width: `${stats.stability}%` }}
+                                        />
+                                    </div>
+                                    <span className="text-sm font-bold">{stats.stability}%</span>
+                                </div>
+                            </motion.div>
                         </div>
                     </div>
 
-                    {/* Historical Activity Table */}
-                    <Card className="p-8 shadow-premium border-none bg-white/40" hover={false}>
-                        <h3 className="text-xl font-black text-slate-900 mb-8 tracking-tight flex items-center">
-                            <Activity size={20} className="mr-3 text-teal-600" /> Recent Synchronizations
-                        </h3>
+                    {/* Data Table */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.3 }}
+                        className="mt-6 bg-white rounded-2xl border border-slate-200/60 shadow-sm p-8"
+                    >
+                        <div className="mb-6">
+                            <h2 className="text-xl font-bold text-slate-900">Detailed History</h2>
+                            <p className="text-sm text-slate-500 mt-1">Complete log of all check-ins</p>
+                        </div>
+
                         <div className="overflow-x-auto">
-                            <table className="w-full text-left">
+                            <table className="w-full">
                                 <thead>
-                                    <tr className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
-                                        <th className="pb-4">Date</th>
-                                        <th className="pb-4">Tremor</th>
-                                        <th className="pb-4">Stiffness</th>
-                                        <th className="pb-4">Sleep</th>
-                                        <th className="pb-4">Mood</th>
-                                        <th className="pb-4">Meds</th>
+                                    <tr className="border-b border-slate-200">
+                                        <th className="pb-4 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Date</th>
+                                        <th className="pb-4 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">Tremor</th>
+                                        <th className="pb-4 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">Rigidity</th>
+                                        <th className="pb-4 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">Sleep</th>
+                                        <th className="pb-4 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">Mood</th>
+                                        <th className="pb-4 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">Medication</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-50">
+                                <tbody className="divide-y divide-slate-100">
                                     {data.slice().reverse().map((log, i) => (
-                                        <tr key={i} className="group hover:bg-white/50 transition-colors">
-                                            <td className="py-4 text-sm font-black text-slate-900">{log.date}</td>
-                                            <td className="py-4"><span className="px-2 py-0.5 bg-teal-50 text-teal-600 rounded-md text-[10px] font-black uppercase tracking-widest border border-teal-100">{log.tremor} / 10</span></td>
-                                            <td className="py-4"><span className="px-2 py-0.5 bg-rose-50 text-rose-600 rounded-md text-[10px] font-black uppercase tracking-widest border border-rose-100">{log.stiffness} / 10</span></td>
-                                            <td className="py-4 text-sm font-bold text-slate-500">{log.sleep}</td>
-                                            <td className="py-4 text-xs font-bold text-slate-700 uppercase tracking-widest group-hover:text-teal-600">{log.mood >= 8 ? 'Strong' : log.mood >= 5 ? 'Stable' : 'Challenged'}</td>
-                                            <td className="py-4">
-                                                <div className={cn("w-2 h-2 rounded-full shadow-sm", log.medication > 0 ? "bg-emerald-500 ring-4 ring-emerald-50" : "bg-slate-200")} />
+                                        <tr key={i} className="hover:bg-slate-50/50 transition-colors">
+                                            <td className="py-4 text-sm font-semibold text-slate-900">{log.date}</td>
+                                            <td className="py-4 text-center">
+                                                <span className="inline-block px-3 py-1 bg-teal-50 text-teal-700 rounded-lg text-sm font-semibold">
+                                                    {log.tremor}
+                                                </span>
+                                            </td>
+                                            <td className="py-4 text-center">
+                                                <span className="inline-block px-3 py-1 bg-cyan-50 text-cyan-700 rounded-lg text-sm font-semibold">
+                                                    {log.stiffness}
+                                                </span>
+                                            </td>
+                                            <td className="py-4 text-center text-sm font-medium text-slate-700">{log.sleep}h</td>
+                                            <td className="py-4 text-center text-sm font-medium text-slate-700">{log.mood}/10</td>
+                                            <td className="py-4 text-center">
+                                                <div className={cn(
+                                                    "w-3 h-3 rounded-full mx-auto",
+                                                    log.medication > 0 ? "bg-teal-500 ring-4 ring-teal-100" : "bg-slate-300"
+                                                )} />
                                             </td>
                                         </tr>
                                     ))}
                                     {data.length === 0 && (
                                         <tr>
-                                            <td colSpan={6} className="py-12 text-center text-slate-400 font-bold uppercase tracking-widest text-xs">No synchronization history found.</td>
+                                            <td colSpan={6} className="py-16 text-center text-slate-400 text-sm">
+                                                No check-in data available
+                                            </td>
                                         </tr>
                                     )}
                                 </tbody>
                             </table>
                         </div>
-                    </Card>
+                    </motion.div>
                 </div>
             )}
         </div>
     );
 }
 
+function StatCard({ icon: Icon, label, value, unit, color }: any) {
+    const colorMap: any = {
+        teal: { bg: 'bg-teal-50', text: 'text-teal-600', ring: 'ring-teal-100' },
+        cyan: { bg: 'bg-cyan-50', text: 'text-cyan-600', ring: 'ring-cyan-100' },
+        blue: { bg: 'bg-blue-50', text: 'text-blue-600', ring: 'ring-blue-100' },
+        rose: { bg: 'bg-rose-50', text: 'text-rose-600', ring: 'ring-rose-100' },
+        emerald: { bg: 'bg-emerald-50', text: 'text-emerald-600', ring: 'ring-emerald-100' },
+        violet: { bg: 'bg-violet-50', text: 'text-violet-600', ring: 'ring-violet-100' },
+    };
+
+    const colors = colorMap[color] || colorMap.teal;
+
+    return (
+        <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            whileHover={{ y: -2 }}
+            className="bg-white rounded-xl border border-slate-200/60 shadow-sm p-5 hover:shadow-md transition-all"
+        >
+            <div className={cn("p-2.5 rounded-xl w-fit mb-3", colors.bg)}>
+                <Icon size={20} className={colors.text} />
+            </div>
+            <div className="flex items-baseline gap-1">
+                <span className={cn("text-3xl font-black", colors.text)}>{value}</span>
+                <span className="text-sm font-semibold text-slate-400">{unit}</span>
+            </div>
+            <p className="text-xs font-semibold text-slate-500 mt-1.5">{label}</p>
+        </motion.div>
+    );
+}
+
 export default function TrendsPage() {
     return (
         <Suspense fallback={
-            <div className="flex items-center justify-center min-h-[400px]">
-                <div className="w-12 h-12 border-4 border-teal-500 border-t-transparent rounded-full animate-spin" />
+            <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 via-white to-teal-50/20">
+                <div className="w-16 h-16 border-4 border-teal-500 border-t-transparent rounded-full animate-spin" />
             </div>
         }>
             <TrendsContent />

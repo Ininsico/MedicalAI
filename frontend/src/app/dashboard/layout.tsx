@@ -66,14 +66,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         { id: 'check-in', label: 'Daily Check-in', icon: CalendarIcon, href: '/dashboard/check-in' },
         { id: 'trends', label: 'Health Trends', icon: TrendingUp, href: '/dashboard/trends' },
         { id: 'reports', label: 'Reports', icon: FileText, href: '/dashboard/reports' },
-        { id: 'settings', label: 'Settings', icon: Settings, href: '/dashboard/settings' },
     ];
 
     const caregiverNavItems = [
         { id: 'overview', label: 'Overview', icon: Home, href: '/dashboard' },
         { id: 'patients', label: 'My Patients', icon: Users, href: '/dashboard/caregivers' },
         { id: 'notifications', label: 'Notifications', icon: Bell, href: '/dashboard/notifications' },
-        { id: 'settings', label: 'Settings', icon: Settings, href: '/dashboard/settings' },
     ];
 
     const navItems = user?.role === 'patient' ? patientNavItems : caregiverNavItems;

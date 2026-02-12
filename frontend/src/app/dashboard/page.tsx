@@ -29,14 +29,35 @@ export default function DashboardPage() {
                 if (userData.role === 'patient') {
                     const fetchedLogs = await api.patient.getLogs(userData.id);
                     if (fetchedLogs && fetchedLogs.length > 0) {
-                        setLogs(fetchedLogs);
                         setLastCheckIn(fetchedLogs[0]);
                         const detected = detectUnusualChanges(fetchedLogs);
                         if (detected) setInsights(detected);
 
-                        const avgTremor = fetchedLogs.reduce((acc: number, log: any) => acc + (log.tremor_severity || 0), 0) / fetchedLogs.length;
-                        const avgStiffness = fetchedLogs.reduce((acc: number, log: any) => acc + (log.stiffness_severity || 0), 0) / fetchedLogs.length;
-                        const avgSleep = fetchedLogs.reduce((acc: number, log: any) => acc + (log.sleep_hours || 0), 0) / fetchedLogs.length;
+                        // Filter for current week (Monday to Today)
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        const monday = new Date(today);
+                        const dayOfWeek = monday.getDay();
+                        const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+                        monday.setDate(monday.getDate() + diff);
+
+                        const weekLogs = fetchedLogs.filter((log: any) => {
+                            const logDate = new Date(log.date);
+                            logDate.setHours(0, 0, 0, 0);
+                            return logDate >= monday && logDate <= today;
+                        });
+
+                        setLogs(weekLogs); // Only pass weekly logs to dashboard
+
+                        const avgTremor = weekLogs.length > 0
+                            ? weekLogs.reduce((acc: number, log: any) => acc + (log.tremor_severity || 0), 0) / weekLogs.length
+                            : 0;
+                        const avgStiffness = weekLogs.length > 0
+                            ? weekLogs.reduce((acc: number, log: any) => acc + (log.stiffness_severity || 0), 0) / weekLogs.length
+                            : 0;
+                        const avgSleep = weekLogs.length > 0
+                            ? weekLogs.reduce((acc: number, log: any) => acc + (log.sleep_hours || 0), 0) / weekLogs.length
+                            : 0;
                         setAverages({ tremor: avgTremor.toFixed(1), stiffness: avgStiffness.toFixed(1), sleep: avgSleep.toFixed(1) });
                     }
                 }

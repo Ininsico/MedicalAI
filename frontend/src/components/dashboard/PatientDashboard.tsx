@@ -128,7 +128,7 @@ export default function PatientDashboard({ lastCheckIn, insights, averages, logs
                     {/* Quick Stats Grid */}
                     <div className="lg:col-span-5 grid grid-cols-2 gap-6">
                         <PremiumMetricCard
-                            label="Total Sessions"
+                            label="Weekly Check-ins"
                             value={logs?.length || 0}
                             maxValue={30}
                             delay={0.1}

@@ -1,15 +1,30 @@
-
 "use client";
 
 import React, { useState, Suspense } from 'react';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
-import { FileText, Download, Calendar, Activity, CheckCircle2, AlertCircle, ShieldCheck, LogOut } from 'lucide-react';
+import {
+    FileText,
+    Download,
+    Calendar,
+    Activity,
+    CheckCircle2,
+    AlertCircle,
+    ShieldCheck,
+    LogOut,
+    Sparkles,
+    Bot,
+    Copy,
+    Check,
+    ArrowRight
+} from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { cn } from '@/lib/utils';
+import { motion, AnimatePresence } from 'framer-motion';
 
 import { useSearchParams } from 'next/navigation';
 
@@ -40,6 +55,7 @@ function ReportsContent() {
     // AI State
     const [aiLoading, setAiLoading] = useState(false);
     const [aiReport, setAiReport] = useState<string | null>(null);
+    const [copied, setCopied] = useState(false);
 
     const generateAiSummary = async () => {
         setAiLoading(true);
@@ -67,6 +83,14 @@ function ReportsContent() {
         }
     };
 
+    const copyToClipboard = () => {
+        if (aiReport) {
+            navigator.clipboard.writeText(aiReport);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        }
+    };
+
     const generatePDF = async (targetId?: string, targetName?: string) => {
         setLoading(true);
         try {
@@ -84,8 +108,6 @@ function ReportsContent() {
             let patientDob = "N/A";
 
             if (user.role === 'caregiver') {
-                // If a specific target ID is passed (from list), use it.
-                // Otherwise check URL param.
                 const pid = targetId || patientId;
                 if (!pid) {
                     alert("No patient selected");
@@ -195,15 +217,14 @@ function ReportsContent() {
                 headStyles: { fillColor: [15, 23, 42], textColor: 255, fontSize: 8 },
                 bodyStyles: { fontSize: 8 },
                 columnStyles: {
-                    0: { cellWidth: 20 }, // Date
-                    1: { cellWidth: 15 }, // Mood
-                    2: { cellWidth: 12 }, // Tremor
-                    3: { cellWidth: 12 }, // Rigidity
-                    4: { cellWidth: 12 }, // Sleep
-                    5: { cellWidth: 15 }, // Activity
-                    6: { cellWidth: 10 }, // Meds
-                    7: { cellWidth: 35 }, // Symptoms
-                    // 8: Notes takes remaining space
+                    0: { cellWidth: 20 },
+                    1: { cellWidth: 15 },
+                    2: { cellWidth: 12 },
+                    3: { cellWidth: 12 },
+                    4: { cellWidth: 12 },
+                    5: { cellWidth: 15 },
+                    6: { cellWidth: 10 },
+                    7: { cellWidth: 35 },
                 },
                 alternateRowStyles: { fillColor: [241, 245, 249] },
             });
@@ -211,28 +232,21 @@ function ReportsContent() {
             // --- AI ANALYSIS SECTION (ONLY FOR PATIENTS) ---
             if (aiReport && user.role !== 'caregiver') {
                 doc.addPage();
-
-                // AI Header
                 doc.setFillColor(124, 58, 237); // Purple
                 doc.rect(0, 0, 210, 30, 'F');
                 doc.setTextColor(255, 255, 255);
                 doc.setFontSize(16);
                 doc.text("Advanced Clinical Analysis", 14, 20);
-
                 doc.setTextColor(0);
                 doc.setFontSize(10);
-
-                // Clean and split text
                 const cleanText = aiReport
                     .replace(/\*\*/g, '')
                     .replace(/##/g, '')
                     .replace(/-/g, '•');
-
                 const splitText = doc.splitTextToSize(cleanText, 180);
                 doc.text(splitText, 14, 45);
             }
 
-            // Footer
             const pageCount = (doc as any).internal.getNumberOfPages();
             for (let i = 1; i <= pageCount; i++) {
                 doc.setPage(i);
@@ -258,134 +272,213 @@ function ReportsContent() {
     };
 
     return (
-        <div className="space-y-12 pb-24">
-            <header className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-                <div>
-                    <div className="flex items-center space-x-3 text-teal-600 font-black text-xs uppercase tracking-[0.3em] mb-3">
-                        <FileText size={14} />
-                        <span>Clinical Export Module</span>
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-teal-50/20 py-8 px-4 sm:px-6 lg:px-8">
+            <div className="max-w-7xl mx-auto space-y-8">
+                {/* Header Section */}
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+                    <div>
+                        <div className="flex items-center gap-2 text-teal-600 font-bold text-xs uppercase tracking-widest mb-2">
+                            <Sparkles size={14} />
+                            <span>Clinical Intelligence</span>
+                        </div>
+                        <h1 className="text-3xl sm:text-4xl font-black text-slate-900 tracking-tight">
+                            Reports & Analysis
+                        </h1>
+                        <p className="mt-2 text-slate-500 max-w-2xl">
+                            Generate comprehensive clinical PDF reports and leverage AI to uncover hidden patterns in your health data.
+                        </p>
                     </div>
-                    <h1 className="text-5xl font-black text-slate-900 tracking-tighter">
-                        {patientId && patientInfo ? patientInfo.full_name : (role === 'caregiver' ? 'Patient Repository' : 'Analytical')} <span className="text-slate-400 italic font-serif font-light">{patientId && patientInfo ? 'Report' : 'Reports'}</span>
-                    </h1>
                 </div>
 
-                <div className="flex items-center space-x-4">
-                    <button
-                        onClick={() => {
-                            localStorage.removeItem('token');
-                            localStorage.removeItem('user');
-                            window.location.href = '/login';
-                        }}
-                        className="p-4 bg-white/50 border border-white text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-2xl shadow-premium backdrop-blur-xl transition-all group"
-                        title="End Session"
-                    >
-                        <LogOut size={20} className="group-hover:rotate-12 transition-transform" />
-                    </button>
-                </div>
-            </header>
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                    {/* Left Column: PDF Reports */}
+                    <div className="lg:col-span-4 space-y-6">
+                        <motion.div
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            className="bg-white rounded-3xl border border-slate-200/60 shadow-xl shadow-slate-200/40 overflow-hidden"
+                        >
+                            <div className="p-6 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+                                <h3 className="font-bold text-slate-900 flex items-center gap-2">
+                                    <FileText size={18} className="text-teal-600" />
+                                    Export Records
+                                </h3>
+                                <div className="px-2 py-1 bg-teal-100 text-teal-700 text-[10px] font-bold uppercase rounded-full tracking-wide">
+                                    PDF Format
+                                </div>
+                            </div>
 
-            {role === 'caregiver' ? (
-                <div className="grid grid-cols-1 gap-6">
-                    <Card className="p-0 overflow-hidden border-slate-100" hover={false}>
-                        <div className="p-8 border-b border-slate-50 bg-slate-50/50">
-                            <h3 className="text-xl font-black text-slate-900">Enrolled Patient Reports</h3>
-                            <p className="text-slate-500 text-sm mt-1">Select a patient to generate and download their full clinical history PDF.</p>
-                        </div>
-                        <div className="divide-y divide-slate-100">
-                            {assignedPatients.length === 0 ? (
-                                <div className="p-12 text-center text-slate-400 font-medium">No patients found.</div>
-                            ) : (
-                                assignedPatients.map((patient: any) => (
-                                    <div key={patient.id} className="p-6 flex items-center justify-between hover:bg-slate-50 transition-colors">
-                                        <div className="flex items-center space-x-4">
-                                            <div className="w-12 h-12 bg-slate-200 rounded-xl flex items-center justify-center font-black text-slate-500">
-                                                {patient.full_name.charAt(0)}
-                                            </div>
-                                            <div>
-                                                <div className="font-bold text-slate-900">{patient.full_name}</div>
-                                                <div className="text-xs text-slate-400 font-mono uppercase tracking-widest">ID: {patient.id.slice(0, 8)}</div>
-                                            </div>
-                                        </div>
-                                        <Button
-                                            onClick={() => generatePDF(patient.id, patient.full_name)}
-                                            variant="outline"
-                                            className="border-slate-200 hover:bg-white hover:border-teal-500 text-slate-600 hover:text-teal-600"
-                                            isLoading={loading}
-                                        >
-                                            <Download size={16} className="mr-2" /> Download Record
-                                        </Button>
-                                    </div>
-                                ))
-                            )}
-                        </div>
-                    </Card>
-                </div>
-            ) : (
-                <>
-                    {/* AI Report Section */}
-                    <Card className="p-0 border border-slate-100 overflow-hidden bg-white shadow-xl relative">
-                        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-teal-500/5 blur-[100px] rounded-full" />
-                        <div className="relative z-10 p-10">
-                            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-8 mb-8">
+                            <div className="p-6">
+                                <p className="text-sm text-slate-500 mb-6 leading-relaxed">
+                                    Download a high-fidelity clinical report containing your longitudinal symptom data, medication adherence records, and daily check-in logs.
+                                </p>
+
+                                <button
+                                    onClick={() => generatePDF()}
+                                    disabled={loading}
+                                    className={cn(
+                                        "w-full py-4 rounded-xl flex items-center justify-center gap-2 font-bold transition-all duration-300",
+                                        success
+                                            ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/25"
+                                            : "bg-slate-900 text-white hover:bg-slate-800 shadow-lg shadow-slate-900/20 hover:shadow-xl hover:shadow-slate-900/30",
+                                        loading && "opacity-70 cursor-not-allowed"
+                                    )}
+                                >
+                                    {loading ? (
+                                        <>
+                                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                            <span>Processing...</span>
+                                        </>
+                                    ) : success ? (
+                                        <>
+                                            <CheckCircle2 size={20} />
+                                            <span>Report Downloaded</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Download size={20} />
+                                            <span>Generate Official Report</span>
+                                        </>
+                                    )}
+                                </button>
+                                <p className="text-xs text-center text-slate-400 mt-4">
+                                    Format accepted by most clinics and specialists.
+                                </p>
+                            </div>
+                        </motion.div>
+
+                        {/* Additional Info Card */}
+                        <motion.div
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: 0.1 }}
+                            className="bg-gradient-to-br from-teal-500 to-cyan-600 rounded-3xl p-6 text-white shadow-lg shadow-teal-500/20"
+                        >
+                            <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center mb-4">
+                                <ShieldCheck size={24} className="text-white" />
+                            </div>
+                            <h3 className="font-bold text-lg mb-2">Secure & Private</h3>
+                            <p className="text-teal-50 text-sm leading-relaxed opacity-90">
+                                Your reports are generated locally and securely. No sensitive medical data is shared with third parties without your explicit consent.
+                            </p>
+                        </motion.div>
+                    </div>
+
+                    {/* Right Column: AI Analysis */}
+                    <div className="lg:col-span-8">
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="bg-white rounded-3xl border border-slate-200/60 shadow-xl shadow-slate-200/40 overflow-hidden flex flex-col min-h-[600px]"
+                        >
+                            {/* AI Header */}
+                            <div className="p-6 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-slate-50 to-white">
                                 <div>
-                                    <div className="flex items-center space-x-3 text-teal-600 font-bold text-xs uppercase tracking-[0.2em] mb-3">
-                                        <Activity size={16} />
-                                        <span>ParkTrack AI</span>
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <Bot size={20} className="text-teal-600" />
+                                        <h3 className="font-bold text-slate-900">Dr. AI Analysis</h3>
                                     </div>
-                                    <h2 className="text-3xl font-black tracking-tight text-slate-900">Advanced Clinical Insight Engine</h2>
-                                    <p className="text-slate-500 mt-2 max-w-2xl">
-                                        Leverage our advanced custom AI engine to analyze historical patient data, identifying subtle correlations between tremor, stiffness, sleep, mood, and medication adherence that may be missed by standard reviews.
+                                    <p className="text-sm text-slate-500">
+                                        Advanced pattern recognition & symptom correlation
                                     </p>
                                 </div>
-                                <Button
-                                    onClick={generateAiSummary}
-                                    isLoading={aiLoading}
-                                    className="bg-teal-600 hover:bg-teal-700 text-white border-0 py-6 px-8 rounded-2xl text-lg shadow-lg shadow-teal-900/10"
-                                >
-                                    {aiLoading ? 'Analyzing...' : 'Generate AI Analysis'}
-                                    {!aiLoading && <Activity className="ml-2" />}
-                                </Button>
-                            </div>
-
-                            {aiReport && (
-                                <div className="bg-slate-50 rounded-2xl p-8 border border-slate-200 mt-6 animate-in fade-in zoom-in duration-300">
-                                    <div className="prose prose-slate prose-lg max-w-none">
-                                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                            {aiReport}
-                                        </ReactMarkdown>
-                                    </div>
+                                <div className="flex gap-2">
+                                    {aiReport && (
+                                        <button
+                                            onClick={copyToClipboard}
+                                            className="p-2.5 text-slate-500 hover:text-teal-600 hover:bg-teal-50 rounded-xl transition-colors"
+                                            title="Copy Analysis"
+                                        >
+                                            {copied ? <Check size={20} /> : <Copy size={20} />}
+                                        </button>
+                                    )}
+                                    <button
+                                        onClick={generateAiSummary}
+                                        disabled={aiLoading}
+                                        className={cn(
+                                            "px-6 py-2.5 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl transition-all shadow-lg shadow-teal-600/20 flex items-center gap-2",
+                                            aiLoading && "opacity-70 cursor-wait"
+                                        )}
+                                    >
+                                        {aiLoading ? (
+                                            <>
+                                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                Analyzing...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Sparkles size={18} />
+                                                New Analysis
+                                            </>
+                                        )}
+                                    </button>
                                 </div>
-                            )}
-                        </div>
-                    </Card>
-
-                    <div className="grid grid-cols-1 gap-10 mt-10">
-                        <Card className="p-10 border-white/50" hover={false}>
-                            <div className="w-16 h-16 bg-teal-50 rounded-2xl flex items-center justify-center text-teal-600 mb-8">
-                                <Download size={28} />
                             </div>
-                            <h3 className="text-2xl font-black text-slate-900 mb-4 tracking-tight">Full Longitudinal Summary</h3>
-                            <p className="text-slate-500 font-medium leading-relaxed mb-8">
-                                Generates a high-density clinical summary including tremor trends, medication adherence,
-                                and pattern recognition insights. Designed for direct presentation to neurologists.
-                            </p>
-                            <Button
-                                onClick={() => generatePDF()}
-                                className="w-full py-6 text-lg rounded-[24px]"
-                                isLoading={loading}
-                                variant={success ? 'primary' : 'dark'}
-                            >
-                                {success ? (
-                                    <>Report Generated <CheckCircle2 size={20} className="ml-2" /></>
-                                ) : (
-                                    <>Generate PDF Report <Download size={20} className="ml-2" /></>
-                                )}
-                            </Button>
-                        </Card>
+
+                            {/* AI Content Area */}
+                            <div className="flex-1 bg-slate-50/50 p-6 relative">
+                                <AnimatePresence mode="wait">
+                                    {!aiReport && !aiLoading ? (
+                                        <motion.div
+                                            initial={{ opacity: 0 }}
+                                            animate={{ opacity: 1 }}
+                                            exit={{ opacity: 0 }}
+                                            className="absolute inset-0 flex flex-col items-center justify-center text-center p-8"
+                                        >
+                                            <div className="w-24 h-24 bg-white rounded-full shadow-xl shadow-slate-200/60 flex items-center justify-center mb-6">
+                                                <Activity size={40} className="text-teal-500" />
+                                            </div>
+                                            <h4 className="text-xl font-bold text-slate-900 mb-2">
+                                                Ready to Analyze
+                                            </h4>
+                                            <p className="text-slate-500 max-w-md">
+                                                Click "New Analysis" to have our AI review your recent logs, identify trends, and provide personalized insights.
+                                            </p>
+                                        </motion.div>
+                                    ) : aiLoading ? (
+                                        <motion.div
+                                            initial={{ opacity: 0 }}
+                                            animate={{ opacity: 1 }}
+                                            exit={{ opacity: 0 }}
+                                            className="absolute inset-0 flex flex-col items-center justify-center p-8"
+                                        >
+                                            <div className="relative w-24 h-24 mb-8">
+                                                <div className="absolute inset-0 border-4 border-slate-200 rounded-full" />
+                                                <div className="absolute inset-0 border-4 border-teal-500 border-t-transparent rounded-full animate-spin" />
+                                                <div className="absolute inset-0 flex items-center justify-center">
+                                                    <Bot size={32} className="text-teal-600 animate-pulse" />
+                                                </div>
+                                            </div>
+                                            <h4 className="text-lg font-bold text-slate-900 animate-pulse">
+                                                Processing Clinical Data...
+                                            </h4>
+                                            <div className="space-y-2 mt-4 w-64">
+                                                <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                                                    <div className="h-full bg-teal-500 animate-[loading_1.5s_ease-in-out_infinite]" style={{ width: '50%' }} />
+                                                </div>
+                                                <div className="flex justify-between text-xs text-slate-400 font-medium">
+                                                    <span>Analyzing Symptoms</span>
+                                                    <span>Correlating Meds</span>
+                                                </div>
+                                            </div>
+                                        </motion.div>
+                                    ) : (
+                                        <motion.div
+                                            initial={{ opacity: 0, y: 10 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            className="prose prose-slate prose-lg max-w-none bg-white rounded-2xl p-8 shadow-sm border border-slate-200/50"
+                                        >
+                                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                                {aiReport}
+                                            </ReactMarkdown>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                            </div>
+                        </motion.div>
                     </div>
-                </>
-            )}
+                </div>
+            </div>
         </div>
     );
 }
@@ -393,9 +486,8 @@ function ReportsContent() {
 export default function ReportsPage() {
     return (
         <Suspense fallback={
-            <div className="flex items-center justify-center min-h-[400px]">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600"></div>
-                <span className="ml-3 text-slate-500">Loading...</span>
+            <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 via-white to-teal-50/20">
+                <div className="w-16 h-16 border-4 border-teal-500 border-t-transparent rounded-full animate-spin" />
             </div>
         }>
             <ReportsContent />

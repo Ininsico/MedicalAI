@@ -386,3 +386,75 @@ export const getCaregivers = async (req: Request, res: Response) => {
         res.status(500).json({ error: 'Failed to fetch caregiver network' });
     }
 };
+
+export const updateDailyLog = async (req: Request, res: Response) => {
+    try {
+        const patientId = req.params.patientId as string;
+        const logId = req.params.logId as string;
+
+        const { data: user } = await supabaseAdmin
+            .from('users')
+            .select('role')
+            .eq('id', req.user.userId)
+            .single();
+
+        const canUpdate = user?.role === 'admin' || req.user.userId === patientId;
+
+        if (!canUpdate) {
+            return res.status(403).json({ error: 'Not authorized to update logs' });
+        }
+
+        const { data: existingLog } = await supabaseAdmin
+            .from('daily_logs')
+            .select('id, patient_id')
+            .eq('id', logId)
+            .single();
+
+        if (!existingLog || existingLog.patient_id !== patientId) {
+            return res.status(404).json({ error: 'Log not found' });
+        }
+
+        const updateData: any = {};
+        if (req.body.mood !== undefined) updateData.mood = req.body.mood;
+        if (req.body.symptoms !== undefined) updateData.symptoms = req.body.symptoms;
+        if (req.body.medication_taken !== undefined) updateData.medication_taken = req.body.medication_taken;
+        if (req.body.medication_notes !== undefined) updateData.medication_notes = req.body.medication_notes;
+        if (req.body.sleep_hours !== undefined) updateData.sleep_hours = req.body.sleep_hours;
+        if (req.body.activity_level !== undefined) updateData.activity_level = req.body.activity_level;
+        if (req.body.tremor_severity !== undefined) updateData.tremor_severity = req.body.tremor_severity;
+        if (req.body.stiffness_severity !== undefined) updateData.stiffness_severity = req.body.stiffness_severity;
+        if (req.body.notes !== undefined) updateData.notes = req.body.notes;
+
+        const { data: log, error } = await supabaseAdmin
+            .from('daily_logs')
+            .update(updateData)
+            .eq('id', logId)
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        await checkForUnusualPatterns(patientId, log);
+
+        await supabaseAdmin
+            .from('audit_logs')
+            .insert([
+                {
+                    action: 'UPDATE_DAILY_LOG',
+                    user_id: req.user.userId,
+                    target_id: log.id,
+                    details: `Updated daily log for patient ${patientId}`,
+                    ip_address: req.ip
+                }
+            ]);
+
+        res.json({
+            message: 'Daily log updated successfully',
+            log
+        });
+    } catch (error) {
+        res.status(500).json({
+            error: 'Failed to update daily log'
+        });
+    }
+};
