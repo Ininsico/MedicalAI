@@ -2,8 +2,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
-import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
 import { useRouter } from 'next/navigation';
 import {
     CheckCircle2,
@@ -17,23 +15,28 @@ import {
     Pill,
     ShieldCheck,
     ArrowRight,
-    LogOut
+    ArrowLeft,
+    Sparkles,
+    Brain,
+    ChevronRight,
+    ChevronLeft
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const SYMPTOMS = [
-    { id: 'tremor', label: 'Tremor / Shaking', icon: <Waves size={24} />, description: 'Resting or active tremors' },
-    { id: 'stiffness', label: 'Muscle Rigidity', icon: <Activity size={24} />, description: 'Muscle tension or stiffness' },
-    { id: 'balance', label: 'Walking & Stability', icon: <Wind size={24} />, description: 'Balance while moving' },
-    { id: 'sleep', label: 'Neural Rest', icon: <Moon size={24} />, description: 'Depth and quality of sleep' },
-    { id: 'mood', label: 'Cognitive State', icon: <Heart size={24} />, description: 'Emotional regulation' },
+    { id: 'tremor', label: 'Tremor', icon: <Waves size={24} />, description: 'Shaking intensity' },
+    { id: 'stiffness', label: 'Rigidity', icon: <Activity size={24} />, description: 'Muscle tension' },
+    { id: 'balance', label: 'Balance', icon: <Wind size={24} />, description: 'Stability level' },
+    { id: 'sleep', label: 'Sleep', icon: <Moon size={24} />, description: 'Hours slept' },
+    { id: 'mood', label: 'Mood', icon: <Heart size={24} />, description: 'Overall feeling' },
 ];
 
 const SIDE_EFFECTS = ['Dizziness', 'Nausea', 'Fatigue', 'Dyskinesia', 'Confusion'];
 
 export default function CheckInPage() {
     const router = useRouter();
+    const [currentStep, setCurrentStep] = useState(0);
     const [loading, setLoading] = useState(false);
     const [success, setSuccess] = useState(false);
     const [alreadyDone, setAlreadyDone] = useState(false);
@@ -42,11 +45,10 @@ export default function CheckInPage() {
         tremor: 5,
         stiffness: 5,
         balance: 5,
-        sleep: 5,
-        mood: 5,
+        sleep: 7,
+        mood: 7,
         medication: 'Yes',
         sideEffects: [] as string[],
-        notes: ''
     });
 
     const [role, setRole] = useState<'patient' | 'caregiver'>('patient');
@@ -72,19 +74,17 @@ export default function CheckInPage() {
 
                     if (isToday) {
                         setAlreadyDone(true);
-                        return; // Don't prefill if already done, we'll show done screen
+                        return;
                     }
 
                     setFormData(prev => ({
                         ...prev,
                         tremor: last.tremor_severity || 5,
                         stiffness: last.stiffness_severity || 5,
-                        balance: 5, // Not in backend yet
-                        sleep: last.sleep_hours || 5,
-                        mood: last.mood === 'excellent' ? 10 : last.mood === 'good' ? 8 : last.mood === 'neutral' ? 5 : last.mood === 'poor' ? 3 : 1,
+                        sleep: last.sleep_hours || 7,
+                        mood: last.mood === 'excellent' ? 10 : last.mood === 'good' ? 8 : last.mood === 'neutral' ? 5 : 3,
                         medication: last.medication_taken ? 'Yes' : 'Missed',
                         sideEffects: last.symptoms || [],
-                        notes: last.notes || ''
                     }));
                 }
             } catch (error) {
@@ -107,10 +107,7 @@ export default function CheckInPage() {
         }));
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-
-        // Prevent duplicate submissions
+    const handleSubmit = async () => {
         if (submitting || loading) return;
 
         setSubmitting(true);
@@ -125,7 +122,6 @@ export default function CheckInPage() {
             }
             const user = JSON.parse(userStr);
 
-            // Map numeric mood to enum
             const mapMood = (val: number) => {
                 if (val >= 9) return 'excellent';
                 if (val >= 7) return 'good';
@@ -141,27 +137,22 @@ export default function CheckInPage() {
                 stiffness_severity: formData.stiffness,
                 sleep_hours: formData.sleep,
                 medication_taken: formData.medication === 'Yes' || formData.medication === 'Partially',
-                medication_notes: formData.medication === 'Partially' ? 'Taken partially' : undefined,
                 symptoms: formData.sideEffects,
-                activity_level: 'moderate', // Default
-                notes: formData.notes
+                activity_level: 'moderate',
+                notes: ''
             };
 
             await api.patient.createLog(user.id, payload);
-
             setSuccess(true);
-            setTimeout(() => router.push('/dashboard'), 2000);
+            setTimeout(() => router.push('/dashboard'), 2500);
         } catch (err: any) {
             console.error("Submission failed:", err);
-
-            // Check if it's a "duplicate log" error from backend
             const errorMsg = err.response?.data?.error || err.message || '';
             if (errorMsg.toLowerCase().includes('already exists')) {
                 setAlreadyDone(true);
                 return;
             }
-
-            alert("Error submitting data: " + (err.message || 'Unknown error'));
+            alert("Error: " + (err.message || 'Unknown error'));
             setLoading(false);
             setSubmitting(false);
         }
@@ -169,203 +160,289 @@ export default function CheckInPage() {
 
     if (role === 'caregiver') {
         return (
-            <div className="flex flex-col items-center justify-center h-[70vh] text-center px-6">
-                <div className="p-10 rounded-full mb-10 bg-slate-100 shadow-xl shadow-slate-200/20">
-                    <Stethoscope size={100} className="text-slate-400" />
-                </div>
-                <h2 className="text-4xl font-black text-slate-900 mb-6 tracking-tighter uppercase">Clinical Access Restricted</h2>
-                <p className="text-slate-500 font-medium text-lg max-w-md mx-auto leading-relaxed italic">
-                    Medical providers are authorized for data analysis only. Direct physiological logging must be executed by the primary patient node.
-                </p>
-                <Button
-                    onClick={() => router.push('/dashboard')}
-                    className="mt-12 px-12 py-6 rounded-2xl"
+            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-teal-50/30">
+                <motion.div
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    className="text-center px-6 max-w-lg"
                 >
-                    Return to Matrix <ArrowRight size={20} className="ml-3" />
-                </Button>
+                    <div className="p-12 rounded-3xl mb-6 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-slate-200/50">
+                        <Stethoscope size={48} className="text-teal-600 mx-auto mb-4" />
+                        <h2 className="text-2xl font-bold text-slate-900 mb-3">Caregiver Access</h2>
+                        <p className="text-slate-600 text-sm mb-6">This assessment is only available for patients.</p>
+                        <button
+                            onClick={() => router.push('/dashboard')}
+                            className="w-full px-6 py-3 bg-gradient-to-r from-teal-600 to-teal-500 text-white font-semibold rounded-xl hover:shadow-lg transition-all"
+                        >
+                            <ArrowLeft size={18} className="inline mr-2" />
+                            Back to Dashboard
+                        </button>
+                    </div>
+                </motion.div>
             </div>
         );
     }
 
     if (success || alreadyDone) {
         return (
-            <div className="flex flex-col items-center justify-center h-[70vh] text-center px-6">
+            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-teal-50/30">
                 <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    className={cn(
-                        "p-10 rounded-full mb-10 shadow-2xl transition-all",
-                        success ? "bg-emerald-100 shadow-emerald-500/20" : "bg-teal-100 shadow-teal-500/20"
-                    )}
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    className="text-center px-6 max-w-lg"
                 >
-                    {success ? (
-                        <CheckCircle2 size={100} className="text-emerald-600" />
-                    ) : (
-                        <ShieldCheck size={100} className="text-teal-600" />
+                    <div className="relative mb-8">
+                        <div className="absolute inset-0 bg-teal-500/20 blur-3xl rounded-full" />
+                        <div className="relative p-12 rounded-full bg-gradient-to-br from-teal-500 to-teal-600 shadow-2xl shadow-teal-600/30 mx-auto w-fit">
+                            {success ? <CheckCircle2 size={64} className="text-white" /> : <ShieldCheck size={64} className="text-white" />}
+                        </div>
+                    </div>
+                    <h2 className="text-3xl font-bold text-slate-900 mb-3">
+                        {success ? "All Done!" : "Already Completed"}
+                    </h2>
+                    <p className="text-slate-600 mb-6">
+                        {success ? "Your check-in has been recorded successfully." : "You've completed today's check-in."}
+                    </p>
+                    {!success && (
+                        <button
+                            onClick={() => router.push('/dashboard')}
+                            className="px-8 py-3 bg-gradient-to-r from-teal-600 to-teal-500 text-white font-semibold rounded-xl hover:shadow-lg transition-all"
+                        >
+                            View Dashboard
+                        </button>
                     )}
                 </motion.div>
-                <h2 className="text-5xl font-black text-slate-900 mb-6 tracking-tighter">
-                    {success ? "Transmission Successful" : "Daily Baseline Secured"}
-                </h2>
-                <p className="text-slate-500 font-medium text-xl max-w-md mx-auto leading-relaxed">
-                    {success
-                        ? "Your clinical data packets have been synchronized for today's analysis period."
-                        : "System indicates today's physiological calibration is already complete. Analysis engine is processing your data."}
-                </p>
-                {!success && (
-                    <Button
-                        onClick={() => router.push('/dashboard')}
-                        className="mt-12 px-12 py-6 rounded-2xl"
-                    >
-                        Return to Command Center <ArrowRight size={20} className="ml-3" />
-                    </Button>
-                )}
             </div>
         );
     }
 
+    const totalSteps = 3;
+    const progress = ((currentStep + 1) / totalSteps) * 100;
+
     return (
-        <div className="max-w-4xl mx-auto pt-10 pb-32">
-            <header className="mb-16 flex justify-between items-start">
-                <div className="flex-1" />
-                <div className="flex-[2] text-center">
-                    <div className="inline-flex items-center space-x-2 bg-white/50 border border-white px-4 py-2 rounded-full mb-6">
-                        <span className="text-xs font-black tracking-widest uppercase text-slate-500">60-Second Rapid Calibration</span>
-                    </div>
-                    <h1 className="text-5xl font-black text-slate-900 tracking-tighter mb-4">Daily Check-In</h1>
-                    <p className="text-slate-500 font-medium max-w-lg mx-auto italic font-serif text-lg">
-                        Record your physiological state. This information is non-diagnostic.
-                    </p>
-                </div>
-                <div className="flex-1 flex justify-end">
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-teal-50/30 flex items-center justify-center p-6">
+            {/* Decorations */}
+            <div className="fixed top-0 right-0 w-[500px] h-[500px] bg-teal-500/5 rounded-full blur-3xl" />
+            <div className="fixed bottom-0 left-0 w-[500px] h-[500px] bg-cyan-500/5 rounded-full blur-3xl" />
+
+            <div className="relative w-full max-w-4xl">
+                {/* Header */}
+                <div className="text-center mb-8">
                     <button
-                        onClick={() => {
-                            localStorage.removeItem('token');
-                            localStorage.removeItem('user');
-                            window.location.href = '/login';
-                        }}
-                        className="p-4 bg-white/50 border border-white text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-2xl shadow-premium backdrop-blur-xl transition-all group"
-                        title="End Session"
+                        onClick={() => router.push('/dashboard')}
+                        className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-slate-600 hover:text-teal-600 transition-colors mb-6"
                     >
-                        <LogOut size={20} className="group-hover:rotate-12 transition-transform" />
+                        <ArrowLeft size={16} />
+                        Back
                     </button>
+                    <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-white rounded-full border border-teal-200/50 mb-4">
+                        <Sparkles size={12} className="text-teal-600" />
+                        <span className="text-xs font-semibold text-teal-700 uppercase tracking-wider">Step {currentStep + 1} of {totalSteps}</span>
+                    </div>
+                    <h1 className="text-4xl font-bold text-slate-900 mb-2">Daily Check-In</h1>
+
+                    {/* Progress Bar */}
+                    <div className="max-w-md mx-auto mt-6">
+                        <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+                            <motion.div
+                                className="h-full bg-gradient-to-r from-teal-500 to-teal-400"
+                                initial={{ width: 0 }}
+                                animate={{ width: `${progress}%` }}
+                                transition={{ duration: 0.3 }}
+                            />
+                        </div>
+                    </div>
                 </div>
-            </header>
 
-            <form onSubmit={handleSubmit} className="space-y-12">
-                {/* Physical Symptoms Section */}
-                <section className="space-y-8">
-                    <h3 className="text-xl font-black text-slate-900 uppercase tracking-widest border-l-4 border-teal-500 pl-4">Physical Metrics</h3>
-                    <div className="grid grid-cols-1 gap-6">
-                        {SYMPTOMS.map((symptom) => (
-                            <Card key={symptom.id} className="p-8 border-white/50" hover={false}>
-                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
-                                    <div className="flex items-center space-x-6 min-w-[250px]">
-                                        <div className="w-14 h-14 bg-teal-50 rounded-2xl flex items-center justify-center text-teal-600 shadow-inner">
-                                            {symptom.icon}
-                                        </div>
-                                        <div>
-                                            <h4 className="font-black text-slate-900 uppercase tracking-tight">{symptom.label}</h4>
-                                            <p className="text-xs text-slate-400 font-medium">{symptom.description}</p>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex-1 space-y-4">
-                                        <div className="flex justify-between text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
-                                            <span>Minimal</span>
-                                            <span className="text-teal-600 text-lg">{formData[symptom.id as keyof typeof formData] as number} / 10</span>
-                                            <span>Maximal</span>
-                                        </div>
-                                        <input
-                                            type="range"
-                                            min="0"
-                                            max="10"
-                                            step="1"
-                                            value={formData[symptom.id as keyof typeof formData] as number}
-                                            onChange={(e) => handleSliderChange(symptom.id, parseInt(e.target.value))}
-                                            className="w-full h-3 bg-slate-100 rounded-full appearance-none cursor-pointer accent-teal-600 focus:outline-none"
-                                        />
-                                    </div>
+                {/* Main Card */}
+                <div className="relative overflow-hidden rounded-3xl bg-white border border-slate-200/50 shadow-[0_8px_30px_rgb(0,0,0,0.08)] p-8 md:p-12 min-h-[500px] flex flex-col">
+                    <AnimatePresence mode="wait">
+                        {/* Step 0: Physical Symptoms (Grid Layout) */}
+                        {currentStep === 0 && (
+                            <motion.div
+                                key="step0"
+                                initial={{ opacity: 0, x: 50 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: -50 }}
+                                className="flex-1 flex flex-col"
+                            >
+                                <div className="mb-8">
+                                    <h2 className="text-2xl font-bold text-slate-900 mb-2">How are you feeling?</h2>
+                                    <p className="text-slate-500">Rate your physical symptoms today</p>
                                 </div>
-                            </Card>
-                        ))}
-                    </div>
-                </section>
 
-                {/* Medication Section */}
-                <section className="space-y-8 pt-12">
-                    <h3 className="text-xl font-black text-slate-900 uppercase tracking-widest border-l-4 border-teal-500 pl-4 text-rose-500 border-rose-500">Medication & Side Effects</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <Card className="p-8 border-white/50" hover={false}>
-                            <div className="flex items-center space-x-4 mb-8">
-                                <Pill className="text-teal-600" />
-                                <h4 className="font-black text-slate-900 uppercase tracking-tight">Adherence Today</h4>
-                            </div>
-                            <div className="flex flex-col space-y-3">
-                                {['Yes', 'Missed', 'Partially'].map((option) => (
-                                    <button
-                                        key={option}
-                                        type="button"
-                                        onClick={() => setFormData(p => ({ ...p, medication: option }))}
-                                        className={cn(
-                                            "py-4 px-6 rounded-2xl border-2 font-bold text-sm transition-all text-left",
-                                            formData.medication === option
-                                                ? "border-teal-600 bg-teal-50 text-teal-700 shadow-lg shadow-teal-600/10"
-                                                : "border-slate-50 bg-white text-slate-500 hover:border-slate-200"
-                                        )}
-                                    >
-                                        {option}
-                                    </button>
-                                ))}
-                            </div>
-                        </Card>
+                                <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                                    {SYMPTOMS.map((symptom) => (
+                                        <div key={symptom.id} className="bg-slate-50/50 rounded-2xl p-6 border border-slate-200/50">
+                                            <div className="flex items-center gap-3 mb-4">
+                                                <div className="p-2.5 bg-teal-100 rounded-xl text-teal-600">
+                                                    {symptom.icon}
+                                                </div>
+                                                <div className="flex-1">
+                                                    <h3 className="font-bold text-slate-900">{symptom.label}</h3>
+                                                    <p className="text-xs text-slate-500">{symptom.description}</p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <div className="text-3xl font-bold text-teal-600">{formData[symptom.id as keyof typeof formData] as number}</div>
+                                                    <div className="text-xs text-slate-400">/10</div>
+                                                </div>
+                                            </div>
+                                            <input
+                                                type="range"
+                                                min="0"
+                                                max="10"
+                                                value={formData[symptom.id as keyof typeof formData] as number}
+                                                onChange={(e) => handleSliderChange(symptom.id, parseInt(e.target.value))}
+                                                className="w-full h-2 bg-slate-200 rounded-full appearance-none cursor-pointer slider-teal"
+                                                style={{
+                                                    background: `linear-gradient(to right, rgb(20 184 166) 0%, rgb(20 184 166) ${(formData[symptom.id as keyof typeof formData] as number) * 10}%, rgb(226 232 240) ${(formData[symptom.id as keyof typeof formData] as number) * 10}%, rgb(226 232 240) 100%)`
+                                                }}
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+                            </motion.div>
+                        )}
 
-                        <Card className="p-8 border-white/50" hover={false}>
-                            <div className="flex items-center space-x-4 mb-8">
-                                <AlertCircle className="text-rose-500" />
-                                <h4 className="font-black text-slate-900 uppercase tracking-tight">Side Effects</h4>
-                            </div>
-                            <div className="flex flex-wrap gap-3">
-                                {SIDE_EFFECTS.map((effect) => (
-                                    <button
-                                        key={effect}
-                                        type="button"
-                                        onClick={() => toggleSideEffect(effect)}
-                                        className={cn(
-                                            "py-3 px-5 rounded-full border-2 font-bold text-xs transition-all",
-                                            formData.sideEffects.includes(effect)
-                                                ? "border-rose-500 bg-rose-50 text-rose-700"
-                                                : "border-slate-50 bg-white text-slate-400 hover:border-slate-200"
-                                        )}
-                                    >
-                                        {effect}
-                                    </button>
-                                ))}
-                            </div>
-                        </Card>
-                    </div>
-                </section>
+                        {/* Step 1: Medication */}
+                        {currentStep === 1 && (
+                            <motion.div
+                                key="step1"
+                                initial={{ opacity: 0, x: 50 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: -50 }}
+                                className="flex-1 flex flex-col justify-center"
+                            >
+                                <div className="text-center mb-12">
+                                    <div className="p-6 bg-teal-100 rounded-full w-fit mx-auto mb-6">
+                                        <Pill size={48} className="text-teal-600" />
+                                    </div>
+                                    <h2 className="text-3xl font-bold text-slate-900 mb-2">Medication Status</h2>
+                                    <p className="text-slate-500">Did you take your medication today?</p>
+                                </div>
 
-                {/* Submission */}
-                <div className="pt-16 flex flex-col items-center space-y-8">
-                    <Button
-                        type="submit"
-                        size="lg"
-                        className="px-24 py-8 text-2xl rounded-[32px] shadow-glow"
-                        isLoading={loading}
-                        variant="dark"
-                        disabled={submitting || loading}
-                    >
-                        Synchronize Data Packet <CheckCircle2 size={32} className="ml-4" />
-                    </Button>
-                    <div className="flex items-center space-x-3 opacity-30">
-                        <Stethoscope size={14} className="text-slate-500" />
-                        <span className="text-[10px] font-black text-slate-500 tracking-[0.3em] uppercase italic font-serif">
-                            Secure Transmission to Neuro-Hub v4.2
-                        </span>
+                                <div className="grid grid-cols-3 gap-4 max-w-2xl mx-auto">
+                                    {['Yes', 'Partially', 'Missed'].map((option) => (
+                                        <button
+                                            key={option}
+                                            type="button"
+                                            onClick={() => setFormData(p => ({ ...p, medication: option }))}
+                                            className={cn(
+                                                "group py-8 px-6 rounded-2xl border-2 font-bold transition-all",
+                                                formData.medication === option
+                                                    ? "border-teal-600 bg-teal-50 shadow-lg shadow-teal-600/20 scale-105"
+                                                    : "border-slate-200 bg-white hover:border-teal-300 hover:scale-102"
+                                            )}
+                                        >
+                                            <div className={cn(
+                                                "text-5xl mb-3",
+                                                formData.medication === option ? "text-teal-600" : "text-slate-400"
+                                            )}>
+                                                {option === 'Yes' ? '✓' : option === 'Partially' ? '½' : '×'}
+                                            </div>
+                                            <div className={cn(
+                                                "text-lg",
+                                                formData.medication === option ? "text-teal-700" : "text-slate-600"
+                                            )}>
+                                                {option}
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
+                            </motion.div>
+                        )}
+
+                        {/* Step 2: Side Effects */}
+                        {currentStep === 2 && (
+                            <motion.div
+                                key="step2"
+                                initial={{ opacity: 0, x: 50 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                exit={{ opacity: 0, x: -50 }}
+                                className="flex-1 flex flex-col justify-center"
+                            >
+                                <div className="text-center mb-12">
+                                    <div className="p-6 bg-teal-100 rounded-full w-fit mx-auto mb-6">
+                                        <AlertCircle size={48} className="text-teal-600" />
+                                    </div>
+                                    <h2 className="text-3xl font-bold text-slate-900 mb-2">Any Side Effects?</h2>
+                                    <p className="text-slate-500">Select any symptoms you're experiencing</p>
+                                </div>
+
+                                <div className="flex flex-wrap justify-center gap-4 max-w-2xl mx-auto">
+                                    {SIDE_EFFECTS.map((effect) => (
+                                        <button
+                                            key={effect}
+                                            type="button"
+                                            onClick={() => toggleSideEffect(effect)}
+                                            className={cn(
+                                                "py-4 px-8 rounded-2xl border-2 font-semibold text-lg transition-all",
+                                                formData.sideEffects.includes(effect)
+                                                    ? "border-teal-600 bg-teal-50 text-teal-700 scale-105 shadow-lg shadow-teal-600/20"
+                                                    : "border-slate-200 bg-white text-slate-600 hover:border-teal-300"
+                                            )}
+                                        >
+                                            {effect}
+                                        </button>
+                                    ))}
+                                </div>
+
+                                <div className="text-center mt-8 text-sm text-slate-400">
+                                    {formData.sideEffects.length === 0 ? "No side effects selected" : `${formData.sideEffects.length} selected`}
+                                </div>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
+                    {/* Navigation */}
+                    <div className="flex items-center justify-between pt-6 border-t border-slate-200/50">
+                        <button
+                            onClick={() => setCurrentStep(Math.max(0, currentStep - 1))}
+                            disabled={currentStep === 0}
+                            className={cn(
+                                "flex items-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all",
+                                currentStep === 0
+                                    ? "opacity-0 pointer-events-none"
+                                    : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                            )}
+                        >
+                            <ChevronLeft size={20} />
+                            Back
+                        </button>
+
+                        <div className="flex gap-2">
+                            {[0, 1, 2].map((step) => (
+                                <div
+                                    key={step}
+                                    className={cn(
+                                        "w-2 h-2 rounded-full transition-all",
+                                        step === currentStep ? "bg-teal-600 w-8" : "bg-slate-300"
+                                    )}
+                                />
+                            ))}
+                        </div>
+
+                        {currentStep < totalSteps - 1 ? (
+                            <button
+                                onClick={() => setCurrentStep(currentStep + 1)}
+                                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-600 to-teal-500 text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-teal-600/30 transition-all"
+                            >
+                                Next
+                                <ChevronRight size={20} />
+                            </button>
+                        ) : (
+                            <button
+                                onClick={handleSubmit}
+                                disabled={loading}
+                                className="flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-teal-600 to-teal-500 text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-teal-600/30 transition-all disabled:opacity-50"
+                            >
+                                {loading ? 'Submitting...' : 'Complete'}
+                                <CheckCircle2 size={20} />
+                            </button>
+                        )}
                     </div>
                 </div>
-            </form>
+            </div>
         </div>
     );
 }
