@@ -52,18 +52,14 @@ app.use('/api/patients', patientRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/ai', aiRoutes);
 
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+
 app.get('/health', (req, res) => {
   res.json({
     status: 'healthy',
     timestamp: new Date().toISOString(),
     supabaseConnected: !!supabase
   });
-});
-
-// Expose the raw Swagger JSON for the frontend to consume
-app.get('/api/docs-json', (req, res) => {
-  res.setHeader('Content-Type', 'application/json');
-  res.json(swaggerSpec);
 });
 
 app.use('*', (req: Request, res: Response) => {
