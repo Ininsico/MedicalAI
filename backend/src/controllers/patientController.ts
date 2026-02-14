@@ -78,7 +78,7 @@ const checkForUnusualPatterns = async (patientId: string, log: any) => {
  * @swagger
  * /api/patients/{patientId}/logs:
  *   post:
- *     summary: Create a daily log entry (Patient or Admin only)
+ *     summary: Create a daily log entry (Patient, Admin, or Assigned Caregiver)
  *     tags: [Patient]
  *     security:
  *       - bearerAuth: []
@@ -154,10 +154,22 @@ export const createDailyLog = async (req: Request, res: Response) => {
             .eq('id', req.user.userId)
             .single();
 
-        const canCreate = user?.role === 'admin' || req.user.userId === patientId;
+        let canCreate = user?.role === 'admin' || req.user.userId === patientId;
+
+        if (!canCreate && user?.role === 'caregiver') {
+            const { data: assignment } = await supabaseAdmin
+                .from('caregiver_assignments')
+                .select('id')
+                .eq('caregiver_id', req.user.userId)
+                .eq('patient_id', patientId)
+                .eq('status', 'active')
+                .single();
+
+            if (assignment) canCreate = true;
+        }
 
         if (!canCreate) {
-            return res.status(403).json({ error: 'Not authorized to create logs' });
+            return res.status(403).json({ error: 'Not authorized to create logs for this patient' });
         }
 
         const { data: patientProfile, error: profileError } = await supabaseAdmin
@@ -403,7 +415,7 @@ export const getCaregivers = async (req: Request, res: Response) => {
  * @swagger
  * /api/patients/{patientId}/logs/{logId}:
  *   put:
- *     summary: Update an existing daily log entry (Patient or Admin only)
+ *     summary: Update an existing daily log entry (Patient, Admin, or Assigned Caregiver)
  *     tags: [Patient]
  *     security:
  *       - bearerAuth: []
@@ -466,10 +478,22 @@ export const updateDailyLog = async (req: Request, res: Response) => {
             .eq('id', req.user.userId)
             .single();
 
-        const canUpdate = user?.role === 'admin' || req.user.userId === patientId;
+        let canUpdate = user?.role === 'admin' || req.user.userId === patientId;
+
+        if (!canUpdate && user?.role === 'caregiver') {
+            const { data: assignment } = await supabaseAdmin
+                .from('caregiver_assignments')
+                .select('id')
+                .eq('caregiver_id', req.user.userId)
+                .eq('patient_id', patientId)
+                .eq('status', 'active')
+                .single();
+
+            if (assignment) canUpdate = true;
+        }
 
         if (!canUpdate) {
-            return res.status(403).json({ error: 'Not authorized to update logs' });
+            return res.status(403).json({ error: 'Not authorized to update logs for this patient' });
         }
 
         const { data: existingLog } = await supabaseAdmin
