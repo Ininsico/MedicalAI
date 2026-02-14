@@ -292,8 +292,8 @@ function TrendsContent() {
                                 </div>
                             </div>
 
-                            <div className="h-[300px] sm:h-[400px] w-full">
-                                <ResponsiveContainer width="100%" height="100%">
+                            <div className="h-[300px] sm:h-[400px] w-full min-h-[300px]">
+                                <ResponsiveContainer width="99%" height="99%">
                                     <LineChart data={data} margin={{ top: 5, right: 20, bottom: 5, left: -20 }}>
                                         <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
                                         <XAxis
@@ -349,8 +349,8 @@ function TrendsContent() {
                                         <p className="text-xs text-slate-500">Adherence Rate</p>
                                     </div>
                                 </div>
-                                <div className="h-[140px] mt-6">
-                                    <ResponsiveContainer width="100%" height="100%">
+                                <div className="h-[140px] mt-6 min-h-[140px]">
+                                    <ResponsiveContainer width="99%" height="99%">
                                         <BarChart data={data.slice(-7)}>
                                             <Bar dataKey="medication" fill="#14b8a6" radius={[4, 4, 0, 0]} />
                                         </BarChart>

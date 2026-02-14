@@ -125,8 +125,8 @@ export default function LandingPage() {
                       <h3 className="text-white font-bold text-lg">Live Tremor Analysis</h3>
                       <p className="text-slate-400 text-sm">Real-time sensor fusion data</p>
                     </div>
-                    <div className="w-full h-full pt-12">
-                      <ResponsiveContainer width="100%" height="100%">
+                    <div className="w-full h-full pt-12 min-h-[300px]">
+                      <ResponsiveContainer width="99%" height="99%">
                         <AreaChart data={dummyData}>
                           <defs>
                             <linearGradient id="splitColor" x1="0" y1="0" x2="0" y2="1">
