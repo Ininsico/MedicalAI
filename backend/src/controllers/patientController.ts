@@ -273,6 +273,12 @@ export const createDailyLog = async (req: Request, res: Response) => {
  *     responses:
  *       200:
  *         description: Logs retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/DailyLog'
  *       403:
  *         description: Not authorized
  *       500:
@@ -339,6 +345,12 @@ export const getDailyLogs = async (req: Request, res: Response) => {
  *     responses:
  *       200:
  *         description: Caregivers retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Caregiver'
  *       403:
  *         description: Not authorized
  *       500:

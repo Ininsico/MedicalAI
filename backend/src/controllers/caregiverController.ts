@@ -117,6 +117,18 @@ export const getDashboard = async (req: Request, res: Response) => {
  *     responses:
  *       200:
  *         description: Logs retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 patient: { type: object }
+ *                 logs:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/DailyLog'
+ *                 adherence_stats: { type: object }
+ *                 pagination: { type: object }
  *       500:
  *         description: Internal server error
  */
@@ -194,6 +206,10 @@ export const getPatientLogs = async (req: Request, res: Response) => {
  *     responses:
  *       200:
  *         description: Log details retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/DailyLog'
  *       404:
  *         description: Log not found
  *       500:
@@ -237,6 +253,10 @@ export const getLogDetails = async (req: Request, res: Response) => {
  *     responses:
  *       200:
  *         description: Patient details retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Patient'
  *       404:
  *         description: Patient not found
  *       500:

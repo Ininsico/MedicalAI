@@ -13,7 +13,7 @@ const checkEmailService = () => {
 
 /**
  * @swagger
- * /api/admin/health:
+ * /api/admin/system/health:
  *   get:
  *     summary: Get system health status and statistics (Admin only)
  *     tags: [Admin]
@@ -167,7 +167,7 @@ export const getAuditLogs = async (req: Request, res: Response) => {
 
 /**
  * @swagger
- * /api/admin/setup-db:
+ * /api/admin/setup-database:
  *   post:
  *     summary: Initiate database setup instructions (Admin only)
  *     tags: [Admin]

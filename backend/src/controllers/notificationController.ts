@@ -28,6 +28,22 @@ import { supabaseAdmin } from '../lib/supabaseClient';
  *     responses:
  *       200:
  *         description: Notifications retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 notifications:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Notification'
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     page: { type: integer }
+ *                     limit: { type: integer }
+ *                     total: { type: integer }
+ *                     pages: { type: integer }
  *       500:
  *         description: Internal server error
  */
@@ -70,7 +86,7 @@ export const getNotifications = async (req: Request, res: Response) => {
 /**
  * @swagger
  * /api/notifications/{id}/read:
- *   patch:
+ *   put:
  *     summary: Mark a single notification as read
  *     tags: [Notifications]
  *     security:
@@ -119,8 +135,8 @@ export const markRead = async (req: Request, res: Response) => {
 
 /**
  * @swagger
- * /api/notifications/mark-all-read:
- *   patch:
+ * /api/notifications/read-all:
+ *   put:
  *     summary: Mark all user notifications as read
  *     tags: [Notifications]
  *     security:

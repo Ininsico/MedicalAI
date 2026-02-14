@@ -54,6 +54,25 @@ app.use('/api/ai', aiRoutes);
 
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
+/**
+ * @swagger
+ * /health:
+ *   get:
+ *     summary: Basic system health check
+ *     description: Returns the operational status of the API and its connection to Supabase.
+ *     tags: [System]
+ *     responses:
+ *       200:
+ *         description: System is healthy
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status: { type: string }
+ *                 timestamp: { type: string, format: date-time }
+ *                 supabaseConnected: { type: boolean }
+ */
 app.get('/health', (req, res) => {
   res.json({
     status: 'healthy',

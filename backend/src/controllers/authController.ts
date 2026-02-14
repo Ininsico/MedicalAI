@@ -209,14 +209,27 @@ export const login = async (req: Request, res: Response) => {
  * /api/auth/profile:
  *   get:
  *     summary: Get current user profile
+ *     description: Retrieves the authenticated user's profile information including role and contact details.
  *     tags: [Auth]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: User profile retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id: { type: string }
+ *                 email: { type: string }
+ *                 full_name: { type: string }
+ *                 role: { type: string }
+ *                 phone: { type: string }
+ *                 created_at: { type: string, format: date-time }
+ *                 last_login: { type: string, format: date-time }
  *       401:
- *         description: Unauthorized
+ *         description: Unauthorized - Valid JWT token required
  *       404:
  *         description: User not found
  *       500:
